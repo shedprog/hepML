@@ -1,4 +1,5 @@
 import os
+import argparse
 
 import numpy as np
 import matplotlib
@@ -13,9 +14,26 @@ from MlClasses.Dnn import Dnn
 
 #===== Define some useful variables =====
 
-makePlots=True
-doClassification=False
-doRegression=True
+# makePlots=False
+# doClassification=False
+# doRegression=False
+
+parser = argparse.ArgumentParser()
+parser.add_argument("-plot","--makePlots", help = "Make a couple of plots",
+                    action="store_true")
+parser.add_argument("-class","--doClassification", help = "Make a simple network to carry out classification",
+                    action="store_true")
+parser.add_argument("-reg","--doRegression", help = "Make a simple network to carry out regressions",
+                    action="store_true")
+args = parser.parse_args()
+
+makePlots=args.makePlots
+doClassification=args.doClassification
+doRegression=args.doRegression  
+
+print "makePlots: ", makePlots
+print "doClassification: ", doClassification
+print "doRegression: ", doRegression
 
 output='exampleOut' # an output directory (then make it if it doesn't exist)
 if not os.path.exists(output): os.makedirs(output)
