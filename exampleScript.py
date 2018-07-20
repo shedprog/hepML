@@ -12,6 +12,8 @@ from keras import callbacks
 from MlClasses.MlData import MlData
 from MlClasses.Dnn import Dnn
 
+from MlClasses.Bdt import Bdt
+
 #===== Define some useful variables =====
 
 # makePlots=False
@@ -25,15 +27,20 @@ parser.add_argument("-class","--doClassification", help = "Make a simple network
                     action="store_true")
 parser.add_argument("-reg","--doRegression", help = "Make a simple network to carry out regressions",
                     action="store_true")
+parser.add_argument("-bdt","--doBdtClassification", help = "Make a simple network to carry out classification by sklearn.tree",
+                    action="store_true")
 args = parser.parse_args()
 
 makePlots=args.makePlots
 doClassification=args.doClassification
-doRegression=args.doRegression  
+doRegression=args.doRegression
+doBdtClassification=args.doBdtClassification
 
-print "makePlots: ", makePlots
-print "doClassification: ", doClassification
-print "doRegression: ", doRegression
+
+print "makePlots           ==>", makePlots
+print "doClassification    ==>", doClassification
+print "doRegression        ==>", doRegression
+print "doBdtClassification ==>", doBdtClassification
 
 output='exampleOut' # an output directory (then make it if it doesn't exist)
 if not os.path.exists(output): os.makedirs(output)
@@ -156,6 +163,39 @@ if doClassification:
     # hep specific plots including sensitivity estimates with a flat systematic etc: 
     print '\nMaking HEP plots'
     dnnC.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
+
+if doBdtClassification:
+
+    print 'Running BdtClassification'
+
+    print 'Preparing data'
+
+    mlDataC = MlData(df,'signal') #insert the dataframe and tell it what the truth variable is
+    mlDataC.split(evalSize=0.0,testSize=0.3) #Split into train and test sets, leave out evaluation set for now 
+
+    # print 'Data output before standardise:'
+    # mlDataC.output(number_of_lines=5)
+
+    mlDataC.standardise()
+
+    print 'Data output after standardise:'
+    mlDataC.output(number_of_lines=5)
+
+    print 'Defining BDT'
+    bdt = Bdt(mlDataC,output)
+
+    print 'Setup BDT'
+    bdt.setup()
+
+    print 'Fitting BDT'
+    bdt.fit()
+
+    print 'Diagnostic BDT'  
+    bdt.diagnostics()
+
+    print 'Making HEP plots'
+    bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
+
 
 if doRegression:
 

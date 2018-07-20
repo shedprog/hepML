@@ -9,15 +9,24 @@ from MlClasses.Config import Config
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV
 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from asimovErrors import Z,eZ
+from pandasPlotting.Plotter import Plotter
+
 class Bdt(object):
     '''Take some data split into test and train sets and train a bdt on it'''
     def __init__(self,data,output=None):
-        self.data = data
-        self.output = output
+        self.data = data 
+        self.output = output + '/bdt'
         self.config=Config(output=output)
 
         self.score=None
         self.crossValResults=None
+
+        # should be checked it valid for Bdt
+        self.scoreTypes = ['acc']
 
     def setup(self,dtArgs={},bdtArgs={}):
 
@@ -45,7 +54,7 @@ class Bdt(object):
 
     def fit(self):
 
-        self.bdt.fit(self.data.X_train, self.data.y_train)
+        self.history = self.bdt.fit(self.data.X_train, self.data.y_train)
 
     def crossValidation(self,kfolds=3,n_jobs=4):
         '''K-means cross validation'''
@@ -146,4 +155,131 @@ class Bdt(object):
             self.score = self.bdt.score(self.data.X_test,self.data.y_test)
         return self.score
 
+    def makeHepPlots(self,expectedSignal,expectedBackground,systematics=[0.0001],makeHistograms=True,subDir=None,customPrediction=None):
+        '''Plots intended for binary signal/background classification
+        
+            - Plots significance as a function of discriminator output
+            - Plots the variables for signal and background given different classifications 
+            - If reference variables are available in the data they will also be plotted 
+            (to be implemented, MlData.referenceVars)
+        '''
 
+        if subDir:
+            oldOutput = self.output
+            self.output=os.path.join(self.output,subDir)
+
+
+        names = self.data.X.columns.values
+
+        #Then predict the results and save them
+        if customPrediction is None:
+            predictionsTest = self.testPrediction()
+        else:
+            predictionsTest = customPrediction
+
+        dataTest=pd.DataFrame(self.data.scaler.inverse_transform(self.data.X_test),columns=names)
+
+        #Add the predictions and truth to a data frame
+        dataTest['truth']=self.data.y_test.as_matrix()
+        dataTest['pred']=predictionsTest
+
+        signalSizeTest = len(dataTest[dataTest.truth==1])
+        bkgdSizeTest = len(dataTest[dataTest.truth==0])
+        signalWeightTest = float(expectedSignal)/signalSizeTest
+        bkgdWeightTest = float(expectedBackground)/bkgdSizeTest
+
+        def applyWeight(row,sw,bw):
+            if row.truth==1: return sw
+            else: return bw
+
+        dataTest['weight'] = dataTest.apply(lambda row: applyWeight(row,signalWeightTest,bkgdWeightTest), axis=1)
+
+        #save it for messing about
+        #dataTest.to_pickle('dataTestSigLoss.pkl')
+
+        #Produce a cumulative histogram of signal and background (truth) as a function of score
+        #Plot it with a log scTrue
+
+        h1=plt.hist(dataTest[dataTest.truth==0]['pred'],weights=dataTest[dataTest.truth==0]['weight'],bins=5000,color='b',alpha=0.8,label='background',cumulative=-1)
+        h2=plt.hist(dataTest[dataTest.truth==1]['pred'],weights=dataTest[dataTest.truth==1]['weight'],bins=5000,color='r',alpha=0.8,label='signal',cumulative=-1)
+        plt.yscale('log')
+        plt.ylabel('Cumulative event counts / 0.02')
+        plt.xlabel('Classifier output')
+        plt.legend()
+ 
+        plt.savefig(os.path.join(self.output,'cumulativeWeightedDiscriminator.pdf'))
+        plt.clf()
+
+        #From the cumulative histograms plot s/b and s/sqrt(s+b)
+
+        s=h2[0]
+        b=h1[0]
+
+        plt.plot((h1[1][:-1]+h1[1][1:])/2,s/b)
+        plt.title('sig/bkgd on test set')
+        plt.savefig(os.path.join(self.output,'sigDivBkgdDiscriminator.pdf'))
+        plt.clf()
+
+        plt.plot((h1[1][:-1]+h1[1][1:])/2,s/np.sqrt(s+b))
+        plt.title('sig/sqrt(sig+bkgd) on test set, best is '+str(max(s/np.sqrt(s+b))))
+        plt.savefig(os.path.join(self.output,'sensitivityDiscriminator.pdf'))
+        plt.clf()
+
+        for systematic in systematics:
+            # sigB=systematic*b
+            #
+            # toPlot=np.sqrt(2*( (s+b) * np.log( (s+b)*(b+sigB*sigB)/(b*b+(s+b)*sigB*sigB) ) - b*b*np.log( 1+sigB*sigB*s/(b*(b+sigB*sigB)) ) / (sigB*sigB) ))
+            #plt.plot((h1[1][:-1]+h1[1][1:])/2,Z(s,b,systematic))
+            toPlot = Z(s,b,systematic)
+            plt.plot((h1[1][:-1]+h1[1][1:])/2,toPlot)
+            es = signalWeightTest*np.sqrt(s/signalWeightTest)
+            eb = bkgdWeightTest*np.sqrt(b/bkgdWeightTest)
+            error=eZ(s,es,b,eb,systematic)
+            # plt.plot((h1[1][:-1]+h1[1][1:])/2,toPlot-error)
+            # plt.plot((h1[1][:-1]+h1[1][1:])/2,toPlot+error)
+            plt.fill_between((h1[1][:-1]+h1[1][1:])/2,toPlot-error,toPlot+error,linewidth=0,alpha=0.6)
+            maxIndex=np.argmax(toPlot)
+            plt.title('Systematic '+str(systematic)+', s: '+str(round(s[maxIndex],1))+', b:'+str(round(b[maxIndex],1))+', best significance is '+str(round(toPlot[maxIndex],2))+' +/- '+str(round(error[maxIndex],2)))
+            plt.xlabel('Cut on classifier score')
+            plt.ylabel('Asimov estimate of significance')
+            plt.savefig(os.path.join(self.output,'asimovDiscriminatorSyst'+str(systematic).replace('.','p')+'.pdf'))
+            plt.clf()
+
+            if makeHistograms: #Do this on the full set
+
+                #Start with all the data and standardise it
+                if self.data.standardised:
+                    data = pd.DataFrame(self.data.scaler.transform(self.data.X))
+                    #data = self.data.X.apply(self.data.scaler.transform)
+                else:
+                    data = self.data.X
+
+                predictions= self.bdt.predict(data.as_matrix())
+            
+                #Now unstandardise
+                if self.data.standardised:
+                    data=pd.DataFrame(self.data.scaler.inverse_transform(data),columns=names)
+
+                data['truth']=self.data.y.as_matrix()
+                data['pred']=predictions
+
+                signalSize = len(data[data.truth==1])
+                bkgdSize = len(data[data.truth==0])
+                signalWeight = float(expectedSignal)/signalSize
+                bkgdWeight = float(expectedBackground)/bkgdSize
+
+                data['weight'] = data.apply(lambda row: applyWeight(row,signalWeight,bkgdWeight), axis=1)
+
+                #Plot all other interesting variables given classification
+                p = Plotter(data,os.path.join(self.output,'allHistsSyst'+str(systematic).replace('.','p')))
+                p1 = Plotter(data[data.pred>float(maxIndex)/len(toPlot)],os.path.join(self.output,'signalPredHistsSyst'+str(systematic).replace('.','p')))
+                p2 = Plotter(data[data.pred<float(maxIndex)/len(toPlot)],os.path.join(self.output,'bkgdPredHistsSyst'+str(systematic).replace('.','p')))
+
+                p.plotAllStackedHists1D('truth',weights='weight',log=True)
+                p1.plotAllStackedHists1D('truth',weights='weight',log=True)
+                p2.plotAllStackedHists1D('truth',weights='weight',log=True)
+
+        if subDir:
+            self.output=oldOutput
+            
+        pass

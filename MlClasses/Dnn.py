@@ -98,7 +98,8 @@ class Dnn(object):
 
         #Fit the model and save the history for diagnostics
         #additionally pass the testing data for further diagnostic results
-        self.history = self.model.fit(self.data.X_train.as_matrix(), self.data.y_train.as_matrix(), sample_weight=self.data.weights_train,
+        self.history = self.model.fit(self.data.X_train.as_matrix(), self.data.y_train.as_matrix(), 
+                sample_weight=self.data.weights_train,
                 validation_data=(self.data.X_test.as_matrix(),self.data.y_test.as_matrix(),self.data.weights_test),
                 epochs=epochs, batch_size=batch_size,**kwargs)
 
