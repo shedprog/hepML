@@ -12,7 +12,8 @@ from keras import callbacks
 from MlClasses.MlData import MlData
 from MlClasses.Dnn import Dnn
 
-from MlClasses.Bdt import Bdt
+# from MlClasses.Bdt import Bdt
+from MlClasses.Bdt import *
 
 #===== Define some useful variables =====
 
@@ -29,18 +30,22 @@ parser.add_argument("-reg","--doRegression", help = "Make a simple network to ca
                     action="store_true")
 parser.add_argument("-bdt","--doBdtClassification", help = "Make a simple network to carry out classification by sklearn.tree",
                     action="store_true")
+parser.add_argument("-xgb","--doXGBClassification", help = "Make a simple network to carry out classification by XGBoost",
+                    action="store_true")
 args = parser.parse_args()
 
 makePlots=args.makePlots
 doClassification=args.doClassification
 doRegression=args.doRegression
 doBdtClassification=args.doBdtClassification
+doXGBClassification=args.doXGBClassification
 
 
 print "makePlots           ==>", makePlots
 print "doClassification    ==>", doClassification
 print "doRegression        ==>", doRegression
 print "doBdtClassification ==>", doBdtClassification
+print "doXGBClassification ==>", doXGBClassification
 
 output='exampleOut' # an output directory (then make it if it doesn't exist)
 if not os.path.exists(output): os.makedirs(output)
@@ -182,10 +187,56 @@ if doBdtClassification:
     mlDataC.output(number_of_lines=5)
 
     print 'Defining BDT'
-    bdt = Bdt(mlDataC,output)
+    bdt = Bdt(mlDataC,output+'/DBT')
 
     print 'Setup BDT'
-    bdt.setup()
+    bdt.setup(AdaBoostClassifier(DecisionTreeClassifier(max_depth=3,min_samples_leaf=0.05),
+                          algorithm='SAMME',n_estimators=1000, learning_rate=0.5))
+    # ====================DecisionTreeClassifier args=========================
+    # min_weight_fraction_leaf=0.0, max_features=None, random_state=None, 
+    # max_leaf_nodes=None, min_impurity_decrease=0.0, min_impurity_split=None,
+    # class_weight=None, presort=False
+    # ====================AdaBoostClassifier Args=============================
+    # base_estimator=None, n_estimators=50, learning_rate=1.0, 
+    # algorithm=SAMME.R, random_state=None  
+
+    print 'Fitting BDT'
+    bdt.fit()
+
+    print 'Diagnostic BDT'  
+    bdt.diagnostics()
+
+    print 'Making HEP plots'
+    bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
+
+if doXGBClassification:
+
+    print 'Running BdtClassification'
+
+    print 'Preparing data'
+
+    mlDataC = MlData(df,'signal') #insert the dataframe and tell it what the truth variable is
+    mlDataC.split(evalSize=0.0,testSize=0.3) #Split into train and test sets, leave out evaluation set for now 
+
+    # print 'Data output before standardise:'
+    # mlDataC.output(number_of_lines=5)
+
+    mlDataC.standardise()
+
+    print 'Data output after standardise:'
+    mlDataC.output(number_of_lines=5)
+
+    print 'Defining BDT'
+    bdt = bdt(mlDataC,output+'/XGB')
+
+    print 'Setup BDT'
+    bdt.setup(XGBClassifier(max_depth=3,n_estimators=1000,random_state=0,learning_rate=0.5))
+    # ========================XGBClassifier args===============================
+    # max_depth=3, learning_rate=0.1, n_estimators=100, silent=True, 
+    # objective='binary:logistic', booster='gbtree', n_jobs=1, nthread=None, 
+    # gamma=0, min_child_weight=1, max_delta_step=0, subsample=1,colsample_bytree=1,
+    # colsample_bylevel=1, reg_alpha=0, reg_lambda=1, scale_pos_weight=1, base_score=0.5, 
+    # random_state=0, seed=None, missing=None, **kwarg
 
     print 'Fitting BDT'
     bdt.fit()

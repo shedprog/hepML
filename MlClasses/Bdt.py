@@ -15,11 +15,30 @@ import matplotlib.pyplot as plt
 from asimovErrors import Z,eZ
 from pandasPlotting.Plotter import Plotter
 
+# Libs added at 17.07.18
+import xgboost
+from sklearn.metrics import accuracy_score
+
+class XGBClassifier(xgboost.XGBClassifier):
+
+    # Convert predict proba output to decision function
+    # predict_proba = 1 / (1 + exp( -decision_function  ))
+    def decision_function(self, X_test):
+
+        # if LEARN set is very bed, the error can appear
+        # ValueError: Input contains NaN, infinity or a value too large for dtype('float32')
+        return -np.log( 1.0 / self.predict_proba(X_test)[:, 1] - 1.0 )
+
+    # definding score method
+    def score(self, X_test, y_test):
+        return accuracy_score(y_test, self.predict(X_test))
+
 class Bdt(object):
     '''Take some data split into test and train sets and train a bdt on it'''
     def __init__(self,data,output=None):
+
         self.data = data 
-        self.output = output + '/bdt'
+        self.output = output
         self.config=Config(output=output)
 
         self.score=None
@@ -28,29 +47,18 @@ class Bdt(object):
         # should be checked it valid for Bdt
         self.scoreTypes = ['acc']
 
-    def setup(self,dtArgs={},bdtArgs={}):
+    # def setup(self,dtArgs={},bdtArgs={}):
+    def setup(self,TreeClassifierClass):
 
-        #Uses TMVA parameters as default
-        if len(dtArgs)==0: 
-            dtArgs['max_depth']=3
-            #dtArgs['max_depth']=5
-            dtArgs['min_samples_leaf']=0.05
+        self.bdt = TreeClassifierClass
 
-        if len(bdtArgs)==0:
-            bdtArgs['algorithm']='SAMME'
-            bdtArgs['n_estimators']=800
-            bdtArgs['learning_rate']=0.5
-            #bdtArgs['learning_rate']=1.0
-
-        self.dt = DecisionTreeClassifier(**dtArgs)
-        self.bdt = AdaBoostClassifier(self.dt,**bdtArgs)
-
+        self.config.addToConfig('BDT was activated: ',type(self.bdt).__name__)
         self.config.addToConfig('nEvalEvents',len(self.data.y_eval.index))
         self.config.addToConfig('nDevEvents',len(self.data.y_dev.index))
         self.config.addToConfig('nTrainEvents',len(self.data.y_train.index))
         self.config.addToConfig('nTestEvents',len(self.data.y_test.index))
-        self.config.addToConfig('DT arguments',dtArgs)
-        self.config.addToConfig('BDT arguments',bdtArgs)
+        # self.config.addToConfig('DT arguments',dtArgs)
+        # self.config.addToConfig('BDT arguments',bdtArgs)
 
     def fit(self):
 
