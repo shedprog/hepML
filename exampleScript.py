@@ -227,7 +227,7 @@ if doXGBClassification:
     mlDataC.output(number_of_lines=5)
 
     print 'Defining BDT'
-    bdt = bdt(mlDataC,output+'/XGB')
+    bdt = Bdt(mlDataC,output+'/XGB')
 
     print 'Setup BDT'
     bdt.setup(XGBClassifier(max_depth=3,n_estimators=1000,random_state=0,learning_rate=0.5))
