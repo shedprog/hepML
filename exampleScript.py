@@ -1,5 +1,6 @@
 import os
 import argparse
+import time
 
 import numpy as np
 import matplotlib
@@ -129,6 +130,8 @@ if doClassification:
     #=============================================================
 
     print 'Running classification'
+    print '-----Timer start-----'
+    start_time = time.time()
 
     # here I make use of the hepML framework with keras
     # aim is to correctly classify signal or background events
@@ -169,9 +172,14 @@ if doClassification:
     print '\nMaking HEP plots'
     dnnC.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
 
+    print '----Timer stop----'
+    print 'General CPU time: ', time.time()-start_time
+
 if doBdtClassification:
 
     print 'Running BdtClassification'
+    print '-----Timer start-----'
+    start_time = time.time()
 
     print 'Preparing data'
 
@@ -209,9 +217,15 @@ if doBdtClassification:
     print 'Making HEP plots'
     bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
 
+    print '----Timer stop----'
+    print 'General CPU time: ', time.time()-start_time
+
+
 if doXGBClassification:
 
     print 'Running BdtClassification'
+    print '------Timer start--------'
+    start_time = time.time()
 
     print 'Preparing data'
 
@@ -247,6 +261,8 @@ if doXGBClassification:
     print 'Making HEP plots'
     bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
 
+    print '----Timer stop----'
+    print 'General CPU time: ', time.time()-start_time
 
 if doRegression:
 

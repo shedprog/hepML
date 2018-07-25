@@ -16,22 +16,26 @@ from asimovErrors import Z,eZ
 from pandasPlotting.Plotter import Plotter
 
 # Libs added at 17.07.18
-import xgboost
+from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 
-class XGBClassifier(xgboost.XGBClassifier):
+# class XGBClassifier(xgboost.XGBClassifier):
+    
+#     # take probabilities of the first class only
+#     def predict_proba(self,X_test):
+#         return super(XGBClassifier, self).predict_proba(X_test)[:,1]
 
-    # Convert predict proba output to decision function
-    # predict_proba = 1 / (1 + exp( -decision_function  ))
-    def decision_function(self, X_test):
+#     # # Convert predict proba output to decision function
+#     # # predict_proba = 1 / (1 + exp( -decision_function  ))
+#     # def decision_function(self, X_test):
 
-        # if LEARN set is very bed, the error can appear
-        # ValueError: Input contains NaN, infinity or a value too large for dtype('float32')
-        return -np.log( 1.0 / self.predict_proba(X_test)[:, 1] - 1.0 )
+#     #     # if LEARN set is very bed, the error can appear
+#     #     # ValueError: Input contains NaN, infinity or a value too large for dtype('float32')
+#     #     return -np.log( 1.0 / self.class1_predict_proba - 1.0 )
 
-    # definding score method
-    def score(self, X_test, y_test):
-        return accuracy_score(y_test, self.predict(X_test))
+#     # # definding score method
+#     # def score(self, X_test, y_test):
+#     #     return accuracy_score(y_test, self.predict(X_test))
 
 class Bdt(object):
     '''Take some data split into test and train sets and train a bdt on it'''
@@ -52,6 +56,7 @@ class Bdt(object):
 
         self.bdt = TreeClassifierClass
 
+        self.config.addToConfig('Vars used',self.data.X.columns.values)
         self.config.addToConfig('BDT was activated: ',type(self.bdt).__name__)
         self.config.addToConfig('nEvalEvents',len(self.data.y_eval.index))
         self.config.addToConfig('nDevEvents',len(self.data.y_dev.index))
@@ -63,6 +68,10 @@ class Bdt(object):
     def fit(self):
 
         self.history = self.bdt.fit(self.data.X_train, self.data.y_train)
+
+    def predict_proba(self,X_test):
+        
+        return self.bdt.predict_proba(X_test)[:,1]
 
     def crossValidation(self,kfolds=3,n_jobs=4):
         '''K-means cross validation'''
@@ -115,11 +124,11 @@ class Bdt(object):
         if not os.path.exists(self.output): os.makedirs(self.output)
         f=open(os.path.join(self.output,'classificationReport'+append+'.txt'),'w')
         f.write( 'Performance on test set:')
-        classificationReport(self.bdt.predict(X_test),self.bdt.decision_function(X_test),y_test,f)
+        classificationReport(self.bdt.predict(X_test),self.predict_proba(X_test),y_test,f)
 
         f.write( '\n' )
         f.write('Performance on training set:')
-        classificationReport(self.bdt.predict(X_train),self.bdt.decision_function(X_train),y_train,f)
+        classificationReport(self.bdt.predict(X_train),self.predict_proba(X_train),y_train,f)
 
         if self.crossValResults is not None:
             f.write( '\n\nCross Validation\n')
@@ -128,18 +137,18 @@ class Bdt(object):
     def rocCurve(self,doEvalSet=False):
 
         if doEvalSet: #produce report for dev and eval sets instead
-            rocCurve(self.bdt.decision_function(self.data.X_eval),self.data.y_eval,output=self.output,append='_eval')
-            rocCurve(self.bdt.decision_function(self.data.X_dev),self.data.y_dev,output=self.output,append='_dev')
+            rocCurve(self.predict_proba(self.data.X_eval),self.data.y_eval,output=self.output,append='_eval')
+            rocCurve(self.predict_proba(self.data.X_dev),self.data.y_dev,output=self.output,append='_dev')
         else:
-            rocCurve(self.bdt.decision_function(self.data.X_test),self.data.y_test,output=self.output)
-            rocCurve(self.bdt.decision_function(self.data.X_train),self.data.y_train,output=self.output,append='_train')
+            rocCurve(self.predict_proba(self.data.X_test),self.data.y_test,output=self.output)
+            rocCurve(self.predict_proba(self.data.X_train),self.data.y_train,output=self.output,append='_train')
 
     def compareTrainTest(self,doEvalSet=False):
         if doEvalSet:
-            compareTrainTest(self.bdt.decision_function,self.data.X_dev,self.data.y_dev,\
+            compareTrainTest(self.predict_proba,self.data.X_dev,self.data.y_dev,\
                     self.data.X_eval,self.data.y_eval,self.output,append='_eval')
         else:
-            compareTrainTest(self.bdt.decision_function,self.data.X_train,self.data.y_train,\
+            compareTrainTest(self.predict_proba,self.data.X_train,self.data.y_train,\
                     self.data.X_test,self.data.y_test,self.output)
 
     def learningCurve(self,kfolds=3,n_jobs=1):
@@ -156,7 +165,7 @@ class Bdt(object):
         plotDiscriminator(self.bdt,self.data.X_test,self.data.y_test, self.output)
 
     def testPrediction(self):
-        return self.bdt.decision_function(self.data.X_test)
+        return self.bdt.predict(self.data.X_test)
 
     def getAccuracy(self):
         if not self.score:
@@ -181,7 +190,8 @@ class Bdt(object):
 
         #Then predict the results and save them
         if customPrediction is None:
-            predictionsTest = self.testPrediction()
+            # predictionsTest = self.testPrediction()
+            predictionsTest = self.predict_proba(self.data.X_test)
         else:
             predictionsTest = customPrediction
 
