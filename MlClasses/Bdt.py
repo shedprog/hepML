@@ -56,7 +56,8 @@ class Bdt(object):
 
         self.bdt = TreeClassifierClass
 
-        self.config.addToConfig('Vars used',self.data.X.columns.values)
+        self.config.addToConfig('Class used: ',self.bdt)
+        self.config.addToConfig('Vars used: ',self.data.X.columns.values)
         self.config.addToConfig('BDT was activated: ',type(self.bdt).__name__)
         self.config.addToConfig('nEvalEvents',len(self.data.y_eval.index))
         self.config.addToConfig('nDevEvents',len(self.data.y_dev.index))
@@ -70,7 +71,7 @@ class Bdt(object):
         self.history = self.bdt.fit(self.data.X_train, self.data.y_train)
 
     def predict_proba(self,X_test):
-        
+
         return self.bdt.predict_proba(X_test)[:,1]
 
     def crossValidation(self,kfolds=3,n_jobs=4):

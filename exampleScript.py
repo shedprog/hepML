@@ -223,7 +223,7 @@ if doBdtClassification:
 
 if doXGBClassification:
 
-    print 'Running BdtClassification'
+    print 'Running XGBClassification'
     print '------Timer start--------'
     start_time = time.time()
 
@@ -240,11 +240,23 @@ if doXGBClassification:
     print 'Data output after standardise:'
     mlDataC.output(number_of_lines=5)
 
-    print 'Defining BDT'
+    print 'Defining XGB'
     bdt = Bdt(mlDataC,output+'/XGB')
 
-    print 'Setup BDT'
-    bdt.setup(XGBClassifier(max_depth=3,n_estimators=1000,random_state=0,learning_rate=0.5))
+    print 'Setup XGB'
+    
+    bdt.setup(XGBClassifier( 
+    learning_rate =0.1,
+    n_estimators=1000,
+    max_depth=5,
+    min_child_weight=1,
+    gamma=0,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    objective= 'binary:logistic',
+    nthread=4,
+    scale_pos_weight=1,
+    seed=27 ))
     # ========================XGBClassifier args===============================
     # max_depth=3, learning_rate=0.1, n_estimators=100, silent=True, 
     # objective='binary:logistic', booster='gbtree', n_jobs=1, nthread=None, 
@@ -252,10 +264,10 @@ if doXGBClassification:
     # colsample_bylevel=1, reg_alpha=0, reg_lambda=1, scale_pos_weight=1, base_score=0.5, 
     # random_state=0, seed=None, missing=None, **kwarg
 
-    print 'Fitting BDT'
+    print 'Fitting XGB'
     bdt.fit()
 
-    print 'Diagnostic BDT'  
+    print 'Diagnostic XGB'  
     bdt.diagnostics()
 
     print 'Making HEP plots'
