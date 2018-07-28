@@ -19,6 +19,8 @@ from pandasPlotting.Plotter import Plotter
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
 
+from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+
 # class XGBClassifier(xgboost.XGBClassifier):
     
 #     # take probabilities of the first class only
@@ -51,10 +53,19 @@ class Bdt(object):
         # should be checked it valid for Bdt
         self.scoreTypes = ['acc']
 
-    # def setup(self,dtArgs={},bdtArgs={}):
-    def setup(self,TreeClassifierClass):
+        self.bestHyperOpr_score = 0
+        self.bestHyperOpt_param = None
 
-        self.bdt = TreeClassifierClass
+    # def setup(self,dtArgs={},bdtArgs={}):
+    def setup(self,cls=XGBClassifier,**init_param):
+
+        # We define cls and init_parameters to re-initialize them later
+        # for the every iteration at hyper-parametr tunning
+        self.cls = cls
+        self.init_param = init_param
+
+        #define our initial bdt
+        self.bdt = self.cls(self.init_param)
 
         self.config.addToConfig('Class used: ',self.bdt)
         self.config.addToConfig('Vars used: ',self.data.X.columns.values)
@@ -77,10 +88,26 @@ class Bdt(object):
     def crossValidation(self,kfolds=3,n_jobs=4):
         '''K-means cross validation'''
         self.crossValResults = cross_val_score(self.bdt, self.data.X_dev, self.data.y_dev,scoring='accuracy',n_jobs=n_jobs,cv=kfolds)
-
         self.config.addLine('CrossValidation')
         self.config.addToConfig('kfolds',kfolds)
         self.config.addLine('')
+        
+    def hyperopt_train_test_xgb(self,param):
+        #function calculate accuracy and returns formated output for HyperOpt
+        kfolds=3
+        n_jobs=6
+ 
+        acc = cross_val_score(self.cls(**dict(self.init_param,**param)), self.data.X_train, self.data.y_train,scoring='accuracy',n_jobs=n_jobs,cv=kfolds).mean()
+
+        if acc > self.bestHyperOpr_score:
+            self.bestHyperOpr_score = acc
+            self.bestHyperOpt_param = param
+
+        print 'best:',self.bestHyperOpr_score, 'accuracy:', acc, param
+        return {'loss': -acc, 'status': STATUS_OK}
+
+    def print_best_hyperopt_results(self):
+        print 'best:',self.bestHyperOpr_score, 'parametrs:',bestHyperOpt_param
 
     def gridSearch(self,param_grid,kfolds=3,n_jobs=4):
         '''Implementation of the sklearn grid search for hyper parameter tuning, 

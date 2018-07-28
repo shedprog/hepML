@@ -33,6 +33,8 @@ parser.add_argument("-bdt","--doBdtClassification", help = "Make a simple networ
                     action="store_true")
 parser.add_argument("-xgb","--doXGBClassification", help = "Make a simple network to carry out classification by XGBoost",
                     action="store_true")
+parser.add_argument("-hp","--doHyperOpt", help = "Make hyper-parametr optimization for XGBoost classification",
+                    action="store_true")
 args = parser.parse_args()
 
 makePlots=args.makePlots
@@ -40,13 +42,14 @@ doClassification=args.doClassification
 doRegression=args.doRegression
 doBdtClassification=args.doBdtClassification
 doXGBClassification=args.doXGBClassification
-
+doHyperOpt=args.doHyperOpt
 
 print "makePlots           ==>", makePlots
 print "doClassification    ==>", doClassification
 print "doRegression        ==>", doRegression
 print "doBdtClassification ==>", doBdtClassification
 print "doXGBClassification ==>", doXGBClassification
+print "doHyperOpt          ==>", doHyperOpt
 
 output='exampleOut' # an output directory (then make it if it doesn't exist)
 if not os.path.exists(output): os.makedirs(output)
@@ -323,3 +326,45 @@ if doRegression:
     print 'Making diagnostics'
     dnnR.diagnostics() #make regression specific diagnostics
 
+if doHyperOpt:
+
+    print 'Running Huper parametr opt'
+    print '------Timer start--------'
+    start_time = time.time()
+
+    print 'Preparing data'
+    mlDataC = MlData(df,'signal') #insert the dataframe and tell it what the truth variable is
+    mlDataC.split(evalSize=0.0,testSize=0.3) #Split into train and test sets, leave out evaluation set for now 
+
+    # print 'Data output before standardise:'
+    # mlDataC.output(number_of_lines=5)
+
+    mlDataC.standardise()
+
+    print 'Data output after standardisation:'
+    mlDataC.output(number_of_lines=5)
+
+    print 'Defining XGB'
+    bdt = Bdt(mlDataC,output+'/XGB')
+
+    space4rf = {
+        'max_depth':hp.choice('max_depth',range(1,10)),
+        'min_child_weight':hp.choice('min_child_weight',range(1,10)),
+        # 'eval_metric':hp.choice('eval_metric',['rmse','mae','logloss','error','merror','mlogloss','auc']),
+        # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+    }
+
+
+    trials = Trials()
+    
+    bdt.setup(cls=XGBClassifier,learning_rate =0.1, n_estimators=140, max_depth=5,
+              min_child_weight=1, gamma=0, subsample=0.8, colsample_bytree=0.8,
+              objective= 'binary:logistic', nthread=4, scale_pos_weight=1, seed=27)
+    
+    # f = bdt.hyperopt_train_test(XGBClassifier())
+    best = fmin(bdt.hyperopt_train_test_xgb, space4rf, algo=tpe.suggest, max_evals=1000, trials=trials)
+
+    print "best:"
+    print best
+
+    bdt.print_best_hyperopt_results()
