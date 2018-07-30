@@ -248,18 +248,16 @@ if doXGBClassification:
 
     print 'Setup XGB'
     
-    bdt.setup(XGBClassifier( 
-    learning_rate =0.1,
-    n_estimators=1000,
-    max_depth=5,
-    min_child_weight=1,
-    gamma=0,
-    subsample=0.8,
-    colsample_bytree=0.8,
-    objective= 'binary:logistic',
-    nthread=4,
-    scale_pos_weight=1,
-    seed=27 ))
+    bdt.setup(cls=XGBClassifier, 
+    n_estimators=235,
+    eta=0.05,
+    max_depth=6,
+    eval_metric='auc',
+    seed=27,
+    sample=2,
+    colsample=1,
+    gamma=3,
+    min_child_weight=5)
     # ========================XGBClassifier args===============================
     # max_depth=3, learning_rate=0.1, n_estimators=100, silent=True, 
     # objective='binary:logistic', booster='gbtree', n_jobs=1, nthread=None, 
@@ -349,20 +347,25 @@ if doHyperOpt:
 
     space4rf = {
         'max_depth':hp.choice('max_depth',range(1,10)),
-        'min_child_weight':hp.choice('min_child_weight',range(1,10)),
-        # 'eval_metric':hp.choice('eval_metric',['rmse','mae','logloss','error','merror','mlogloss','auc']),
-        # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+        'min_child_weight':hp.choice('min_child_weight',range(1,20)),
+        'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
+        'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
+        'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
+        'reg_alpha': hp.choice('reg_alpha',[1e-5, 1e-2, 0.1, 1, 100]),
+        'eval_metric':hp.choice('eval_metric',['rmse','mae','logloss','error','merror','mlogloss','auc']),
+        'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+        'n_estimators': hp.choice('n_estimators',range(80,800)),
+        'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
+
     }
 
 
     trials = Trials()
     
-    bdt.setup(cls=XGBClassifier,learning_rate =0.1, n_estimators=140, max_depth=5,
-              min_child_weight=1, gamma=0, subsample=0.8, colsample_bytree=0.8,
-              objective= 'binary:logistic', nthread=4, scale_pos_weight=1, seed=27)
+    bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
     
     # f = bdt.hyperopt_train_test(XGBClassifier())
-    best = fmin(bdt.hyperopt_train_test_xgb, space4rf, algo=tpe.suggest, max_evals=1000, trials=trials)
+    best = fmin(bdt.hyperopt_train_test_xgb, space4rf, algo=tpe.suggest, max_evals=10000, trials=trials)
 
     print "best:"
     print best
