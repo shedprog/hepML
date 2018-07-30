@@ -65,7 +65,7 @@ class Bdt(object):
         self.init_param = init_param
 
         #define our initial bdt
-        self.bdt = self.cls(self.init_param)
+        self.bdt = self.cls(**self.init_param)
 
         self.config.addToConfig('Class used: ',self.bdt)
         self.config.addToConfig('Vars used: ',self.data.X.columns.values)
@@ -107,7 +107,9 @@ class Bdt(object):
         return {'loss': -acc, 'status': STATUS_OK}
 
     def print_best_hyperopt_results(self):
-        print 'best:',self.bestHyperOpr_score, 'parametrs:',bestHyperOpt_param
+        print '~~~~~~~~~~~ best values ~~~~~~~~~~~~~~'
+        print 'best:',self.bestHyperOpr_score
+        print 'parametrs:',self.bestHyperOpt_param
 
     def gridSearch(self,param_grid,kfolds=3,n_jobs=4):
         '''Implementation of the sklearn grid search for hyper parameter tuning, 
