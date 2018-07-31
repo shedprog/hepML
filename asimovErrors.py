@@ -22,7 +22,13 @@ def wghtd_Z(scale_s,n_s,scale_b,n_b,sig=None):
 
 def wghtd_eZ(scale_s,n_s,scale_b,n_b,sig=None):
     return eZ(scale_s*n_s,scale_s*sqrt(n_s),scale_b*n_b,scale_b*sqrt(n_b),sig)
-    
+
+def asimov_scorer_function(y_true,y_pred,sig = 0.001):
+	_all = y_true[y_pred == 1]
+	signal, back = len(_all[_all == 1]), len(_all[_all == 0])
+	print signal, back 
+	return 1/Z(signal, back, sig=sig)
+
 # example usage
 # Z(14,5,0.3)                   : 3.6149635359712184
 # eZ(14,sqrt(14),5,sqrt(5),0.3) : 1.053697793635855

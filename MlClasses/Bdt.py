@@ -12,7 +12,7 @@ from sklearn.model_selection import GridSearchCV
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from asimovErrors import Z,eZ
+from asimovErrors import Z,eZ,asimov_scorer_function
 from pandasPlotting.Plotter import Plotter
 
 # Libs added at 17.07.18
@@ -56,6 +56,9 @@ class Bdt(object):
         self.bestHyperOpr_score = 0
         self.bestHyperOpt_param = None
 
+        self.scorer = metrics.make_scorer(asimov_scorer_function, 
+            greater_is_better=True, needs_proba=False)
+
     # def setup(self,dtArgs={},bdtArgs={}):
     def setup(self,cls=XGBClassifier,**init_param):
 
@@ -97,7 +100,7 @@ class Bdt(object):
         kfolds=3
         n_jobs=6
  
-        acc = cross_val_score(self.cls(**dict(self.init_param,**param)), self.data.X_train, self.data.y_train,scoring='accuracy',n_jobs=n_jobs,cv=kfolds).mean()
+        acc = cross_val_score(self.cls(**dict(self.init_param,**param)), self.data.X_train, self.data.y_train,scoring=self.scorer,n_jobs=n_jobs,cv=kfolds).mean()
 
         if acc > self.bestHyperOpr_score:
             self.bestHyperOpr_score = acc
