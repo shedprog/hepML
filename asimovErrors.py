@@ -26,7 +26,7 @@ def wghtd_eZ(scale_s,n_s,scale_b,n_b,sig=None):
 def asimov_scorer_function(y_true,y_pred,sig = 0.001):
 	_all = y_true[y_pred == 1]
 	signal, back = len(_all[_all == 1]), len(_all[_all == 0])
-	print signal, back 
+	# print signal, back 
 	return 1/Z(signal, back, sig=sig)
 
 # example usage

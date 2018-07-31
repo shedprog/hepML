@@ -18,6 +18,7 @@ from pandasPlotting.Plotter import Plotter
 # Libs added at 17.07.18
 from xgboost import XGBClassifier
 from sklearn.metrics import accuracy_score
+import sklearn.metrics as metrics
 
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 

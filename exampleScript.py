@@ -348,14 +348,14 @@ if doHyperOpt:
     space4rf = {
         'max_depth':hp.choice('max_depth',range(1,10)),
         'min_child_weight':hp.choice('min_child_weight',range(1,20)),
-        'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
-        'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
-        'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
-        'reg_alpha': hp.choice('reg_alpha',[1e-5, 1e-2, 0.1, 1, 100]),
-        'eval_metric':hp.choice('eval_metric',['rmse','mae','logloss','error','merror','mlogloss','auc']),
-        'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
-        'n_estimators': hp.choice('n_estimators',range(80,800)),
-        'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
+        # 'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
+        # 'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
+        # 'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
+        # 'reg_alpha': hp.choice('reg_alpha',[1e-5, 1e-2, 0.1, 1, 100]),
+        # 'eval_metric':hp.choice('eval_metric',['rmse','mae','logloss','error','merror','mlogloss','auc']),
+        # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+        # 'n_estimators': hp.choice('n_estimators',range(80,800)),
+        # 'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
 
     }
 
