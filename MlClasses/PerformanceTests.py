@@ -58,8 +58,8 @@ def compareTrainTest(clf, X_train, y_train, X_test, y_test, output, bins=30,appe
     '''Compares the decision function for the train and test BDT'''
     decisions = []
     for X,y in ((X_train, y_train), (X_test, y_test)):
-        d1 = clf(X[y>0.5]).ravel()
-        d2 = clf(X[y<0.5]).ravel()
+        d1 = clf(X[y==1]).ravel()
+        d2 = clf(X[y==0]).ravel()
         decisions += [d1, d2]
         
     low = min(np.min(d) for d in decisions)

@@ -244,20 +244,11 @@ if doXGBClassification:
     mlDataC.output(number_of_lines=5)
 
     print 'Defining XGB'
-    bdt = Bdt(mlDataC,output+'/XGB')
+    bdt = Bdt(mlDataC,output+'/XGB',separation_facet=0.957)
 
     print 'Setup XGB'
     
-    bdt.setup(cls=XGBClassifier, 
-    n_estimators=235,
-    eta=0.05,
-    max_depth=6,
-    eval_metric='auc',
-    seed=27,
-    sample=2,
-    colsample=1,
-    gamma=3,
-    min_child_weight=5)
+    bdt.setup(cls=XGBClassifier,max_depth=1,gamma=0.3,min_child_weight=18)
     # ========================XGBClassifier args===============================
     # max_depth=3, learning_rate=0.1, n_estimators=100, silent=True, 
     # objective='binary:logistic', booster='gbtree', n_jobs=1, nthread=None, 
@@ -343,12 +334,12 @@ if doHyperOpt:
     mlDataC.output(number_of_lines=5)
 
     print 'Defining XGB'
-    bdt = Bdt(mlDataC,output+'/XGB')
+    bdt = Bdt(mlDataC,output+'/XGB',separation_facet=0.957)
 
     space4rf = {
         'max_depth':hp.choice('max_depth',range(1,10)),
         'min_child_weight':hp.choice('min_child_weight',range(1,20)),
-        # 'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
+        'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
         # 'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
         # 'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
         # 'reg_alpha': hp.choice('reg_alpha',[1e-5, 1e-2, 0.1, 1, 100]),
@@ -359,13 +350,12 @@ if doHyperOpt:
 
     }
 
-
     trials = Trials()
     
     bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
     
     # f = bdt.hyperopt_train_test(XGBClassifier())
-    best = fmin(bdt.hyperopt_train_test_xgb, space4rf, algo=tpe.suggest, max_evals=10000, trials=trials)
+    best = fmin(bdt.hyperopt_train_test_xgb, space4rf, algo=tpe.suggest, max_evals=100, trials=trials)
 
     print "best:"
     print best
