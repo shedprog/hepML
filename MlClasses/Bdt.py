@@ -16,7 +16,7 @@ from asimovErrors import Z,eZ,asimov_scorer_function
 from pandasPlotting.Plotter import Plotter
 
 # Libs added at 17.07.18
-from xgboost import XGBClassifier
+from MlClasses.xgboost_update import XGBClassifier
 from sklearn.metrics import accuracy_score
 import sklearn.metrics as metrics
 
@@ -42,7 +42,7 @@ from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 
 class Bdt(object):
     '''Take some data split into test and train sets and train a bdt on it'''
-    def __init__(self,data,output=None):
+    def __init__(self,data,output=None,separation_facet=0.5):
 
         self.data = data 
         self.output = output
@@ -60,9 +60,10 @@ class Bdt(object):
         self.scorer = metrics.make_scorer(asimov_scorer_function, 
             greater_is_better=True, needs_proba=False)
 
+        self.separation_facet = separation_facet
     # def setup(self,dtArgs={},bdtArgs={}):
-    def setup(self,cls=XGBClassifier,**init_param):
-
+    
+    def setup(self,cls=None,**init_param):
         # We define cls and init_parameters to re-initialize them later
         # for the every iteration at hyper-parametr tunning
         self.cls = cls
@@ -82,12 +83,14 @@ class Bdt(object):
         # self.config.addToConfig('BDT arguments',bdtArgs)
 
     def fit(self):
-
         self.history = self.bdt.fit(self.data.X_train, self.data.y_train)
 
     def predict_proba(self,X_test):
-
         return self.bdt.predict_proba(X_test)[:,1]
+
+    def change_separation_facet(self,separation_facet):
+        self.separation_facet = separation_facet
+        self.bdt.separation_facet = separation_facet
 
     def crossValidation(self,kfolds=3,n_jobs=4):
         '''K-means cross validation'''
@@ -100,8 +103,10 @@ class Bdt(object):
         #function calculate accuracy and returns formated output for HyperOpt
         kfolds=3
         n_jobs=6
+        cls = self.cls(**dict(self.init_param,**param))
+        cls.separation_facet = self.separation_facet 
  
-        acc = cross_val_score(self.cls(**dict(self.init_param,**param)), self.data.X_train, self.data.y_train,scoring=self.scorer,n_jobs=n_jobs,cv=kfolds).mean()
+        acc = cross_val_score(cls, self.data.X_train, self.data.y_train,scoring=self.scorer,n_jobs=n_jobs,cv=kfolds).mean()
 
         if acc > self.bestHyperOpr_score:
             self.bestHyperOpr_score = acc
@@ -299,6 +304,7 @@ class Bdt(object):
 
             if makeHistograms: #Do this on the full set
 
+
                 #Start with all the data and standardise it
                 if self.data.standardised:
                     data = pd.DataFrame(self.data.scaler.transform(self.data.X))
@@ -333,5 +339,10 @@ class Bdt(object):
 
         if subDir:
             self.output=oldOutput
-            
+        
+        print '___Maximum of asimov score____'
+        print 'Asimov: ',max(toPlot)
+        x_prob = (h1[1][:-1]+h1[1][1:])/2
+        print 'Probability: ',x_prob[list(toPlot).index(max(toPlot))]
+
         pass
