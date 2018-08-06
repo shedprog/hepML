@@ -119,6 +119,8 @@ class MlData(object):
         if standardise: self.standardise() #This needs to be done after the split to not leak info into the test set
 
 
-
+    def get_Data(self):
+        '''It is requered to use Feature Selection skript'''
+        return X_train, y_train, X_test, y_test
         
 
