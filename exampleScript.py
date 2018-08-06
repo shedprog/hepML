@@ -65,14 +65,23 @@ expectedBkgd=844000.*8.2e-4*lumi #cross section of ttbar sample in fb times effi
 # expectedSignal=17.6*0.059*lumi #cross section of stop sample in fb times efficiency measured by Marco
 
 #ttbar background and stop (600,400) 
-dfFull = pd.read_pickle('/nfs/dust/cms/user/elwoodad/dlNonCms/hepML/dfs/combinedleonid.pkl')
+# dfFull = pd.read_pickle('/nfs/dust/cms/user/elwoodad/dlNonCms/hepML/dfs/combinedleonid.pkl')
 expectedSignal=228.195*0.14*lumi 
+
+#read Higgs data
+initial_names = ['signal','lepton_pT','lepton_eta','lepton_phi','missing_energy_magnitude', 'missing_energy_phi',
+'jet_1_pt', 'jet_1_eta', 'jet_1_phi', 'jet_1_b-tag', 'jet_2_pt', 'jet_2_eta', 'jet_2_phi', 'jet_2_b-tag',
+'jet_3_pt', 'jet_3_eta', 'jet_3_phi', 'jet_3_b-tag', 'jet_4_pt', 'jet_4_eta', 'jet_4_phi', 'jet_4_b-tag',
+'m_jj', 'm_jjj', 'm_lv', 'm_jlv', 'm_bb', 'm_wbb', 'm_wwbb']
+dfFull = pd.read_csv('/nfs/dust/cms/user/elwoodad/higgsDataset/HIGGS2M_1.csv' , sep = ',',
+names = initial_names)
+
 
 #===== Load the data from a pickle file (choose one of the two below) =====
 
 #Pick a subset of events to limit size for messing about
 #be careful to pick randomly as the first half are signal and the second half background
-dfFull = dfFull.sample(100000,random_state=42)
+dfFull = dfFull.sample(500000,random_state=42)
 
 #Look at the variables in the trees:
 
@@ -81,19 +90,23 @@ print dfFull.keys()
 
 #Define and select a subset of the variables:
 
-subset=['signal', #1 for signal and 0 for background
-        'HT','MET', #energy sums
-        'MT','MT2W', #topological variables
-        'n_jet','n_bjet', #jet and b-tag multiplicities
-        'sel_lep_pt0','sel_lep_eta0','sel_lep_phi0', #lepton 4-vector
-        'selJet_phi0','selJet_pt0','selJet_eta0','selJet_m0',# lead jet 4-vector
-        'selJet_phi1','selJet_pt1','selJet_eta1','selJet_m1',# second jet 4-vector
-        'selJet_phi2','selJet_pt2','selJet_eta2','selJet_m2']# third jet 4-vector
+# subset=['signal', #1 for signal and 0 for background
+#         'HT','MET', #energy sums
+#         'MT','MT2W', #topological variables
+#         'n_jet','n_bjet', #jet and b-tag multiplicities
+#         'sel_lep_pt0','sel_lep_eta0','sel_lep_phi0', #lepton 4-vector
+#         'selJet_phi0','selJet_pt0','selJet_eta0','selJet_m0',# lead jet 4-vector
+#         'selJet_phi1','selJet_pt1','selJet_eta1','selJet_m1',# second jet 4-vector
+#         'selJet_phi2','selJet_pt2','selJet_eta2','selJet_m2']# third jet 4-vector
+# df=dfFull[subset]
 
-df=dfFull[subset]
+df=dfFull
 
-print 'The reduced keys are:'
-print df.keys()
+# print 'The reduced keys are:'
+# print df.keys()
+print df
+
+# raw_input('Stop reading')
 
 if makePlots:
     #===== Make a couple of plots: =====
@@ -106,18 +119,19 @@ if makePlots:
     df['weight'] = df['signal']*signalWeight+(1-df['signal'])*bkgdWeight
 
     #Choose some variables to plot and loop over them
-    varsToPlot = ['HT','MT','MET','sel_lep_pt0','selJet_pt0']
+    varsToPlot = initial_names
 
     for v in varsToPlot:
 
         print 'Plotting',v
         maxRange=max(df[v])
-        #Plot the signal and background but stacked on top of each other
+        minRange=min(df[v])
+	#Plot the signal and background but stacked on top of each other
         plt.hist([df[df.signal==0][v],df[df.signal==1][v]], #Signal and background input
                 label=['background','signal'],
-                bins=50, range=[0.,maxRange], 
-                stacked=True, color = ['g','r'],
-                weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
+                bins=50, range=[minRange,maxRange], 
+                stacked=True, color = ['g','r'])
+                #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
         plt.yscale('log')
         plt.xlabel(v)
         plt.legend()
