@@ -4,8 +4,8 @@ import numpy as np
 class XGBClassifier(xgboost.XGBClassifier):
 	
 
-	separation_facet = 0.5 # default value
-	# the value of separator should be changed: XGBClassifier.separation_facet = 0.7 ...
+	separation_facet = 0.96 # default value
+	# the value of separator should be changed: XGBClassifier.separation_facet = 0.7
 
 	def predict(self, data, output_margin=False, ntree_limit=0):
 		"""

@@ -12,7 +12,7 @@ from sklearn.model_selection import GridSearchCV
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from asimovErrors import Z,eZ,asimov_scorer_function
+from asimovErrors import Z,eZ ,asimov_scorer_function, asimov_eval_matrics
 from pandasPlotting.Plotter import Plotter
 
 # Libs added at 17.07.18
@@ -20,7 +20,9 @@ from MlClasses.xgboost_update import XGBClassifier
 from sklearn.metrics import accuracy_score
 import sklearn.metrics as metrics
 
-from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
+from hyperopt import fmin, tpe, hp, STATUS_OK, Trials,space_eval
+
+from MlFunctions.DnnFunctions import *
 
 # class XGBClassifier(xgboost.XGBClassifier):
     
@@ -40,13 +42,19 @@ from hyperopt import fmin, tpe, hp, STATUS_OK, Trials
 #     # def score(self, X_test, y_test):
 #     #     return accuracy_score(y_test, self.predict(X_test))
 
+
 class Bdt(object):
     '''Take some data split into test and train sets and train a bdt on it'''
-    def __init__(self,data,output=None,separation_facet=0.5):
+    def __init__(self,data,output=None):
+
+        print "~~Data split~~"
+        print "train:",len(data.y_train)
+        print "test:",len(data.y_test)
+        print "eval:",len(data.y_eval)
 
         self.data = data 
         self.output = output
-        self.config=Config(output=output)
+        self.config = Config(output=output)
 
         self.score=None
         self.crossValResults=None
@@ -54,13 +62,21 @@ class Bdt(object):
         # should be checked it valid for Bdt
         self.scoreTypes = ['acc']
 
-        self.bestHyperOpr_score = 0
+        self.bestHyperOpr_score = None
         self.bestHyperOpt_param = None
 
-        self.scorer = metrics.make_scorer(asimov_scorer_function, 
+        # self.scorer = metrics.make_scorer(asimovSignificanceLossFull(expectedSignal,expectedBkgd,systematics), 
+        #     greater_is_better=True, needs_proba=False)
+        # self.expectedSignal,self.expectedBkgd,self.systematics = expectedSignal,expectedBkgd,systematics
+        # self.scorer = asimovSignificanceLossFull(expectedSignal,expectedBkgd,systematics)
+
+        # self.asimov_scorer = AsimLoss(expectedSignal,expectedBkgd,systematics)
+        # self.metr = asimovSignificanceLossFull(expectedSignal,expectedBkgd,systematics)
+
+        self.scorer = metrics.make_scorer(asimov_scorer_function,
             greater_is_better=True, needs_proba=False)
 
-        self.separation_facet = separation_facet
+        self.separation_facet = 0.5
     # def setup(self,dtArgs={},bdtArgs={}):
     
     def setup(self,cls=None,**init_param):
@@ -83,7 +99,9 @@ class Bdt(object):
         # self.config.addToConfig('BDT arguments',bdtArgs)
 
     def fit(self):
-        self.history = self.bdt.fit(self.data.X_train, self.data.y_train)
+        # self.history = self.bdt.fit(self.data.X_eval, self.data.y_eval)
+        eval_set = [(self.data.X_test, self.data.y_test)] 
+        self.history = self.bdt.fit(self.data.X_train, self.data.y_train,eval_metric=asimov_eval_matrics, eval_set=eval_set, verbose=True)
 
     def predict_proba(self,X_test):
         return self.bdt.predict_proba(X_test)[:,1]
@@ -99,26 +117,36 @@ class Bdt(object):
         self.config.addToConfig('kfolds',kfolds)
         self.config.addLine('')
         
-    def hyperopt_train_test_xgb(self,param):
+    def hyperopt_train_test(self,param):
         #function calculate accuracy and returns formated output for HyperOpt
         kfolds=3
         n_jobs=6
         cls = self.cls(**dict(self.init_param,**param))
-        cls.separation_facet = self.separation_facet 
- 
-        acc = cross_val_score(cls, self.data.X_train, self.data.y_train,scoring=self.scorer,n_jobs=n_jobs,cv=kfolds).mean()
+        # cls.separation_facet = self.separation_facet 
 
-        if acc > self.bestHyperOpr_score:
-            self.bestHyperOpr_score = acc
+        CV_gen = cross_val_score(cls, self.data.X_train, self.data.y_train,scoring=self.scorer,n_jobs=n_jobs,cv=kfolds)
+        # print CV_gen
+        score = CV_gen.mean()
+
+        if self.bestHyperOpr_score == None:
+            self.bestHyperOpr_score = score
+            self.bestHyperOpt_param = param
+        
+        if score < self.bestHyperOpr_score:
+            self.bestHyperOpr_score = score
             self.bestHyperOpt_param = param
 
-        print 'best:',self.bestHyperOpr_score, 'accuracy:', acc, param
-        return {'loss': -acc, 'status': STATUS_OK}
+        print '~~best~~:',self.bestHyperOpr_score, self.bestHyperOpt_param
+        print '__loss__:', score, param
+        return {'loss': score, 'status': STATUS_OK}
 
     def print_best_hyperopt_results(self):
         print '~~~~~~~~~~~ best values ~~~~~~~~~~~~~~'
         print 'best:',self.bestHyperOpr_score
         print 'parametrs:',self.bestHyperOpt_param
+
+    def asimov_output(self):
+        return asimov_scorer_function(self.data.y_test,self.testPrediction())
 
     def gridSearch(self,param_grid,kfolds=3,n_jobs=4):
         '''Implementation of the sklearn grid search for hyper parameter tuning, 
@@ -259,7 +287,7 @@ class Bdt(object):
 
         h1=plt.hist(dataTest[dataTest.truth==0]['pred'],weights=dataTest[dataTest.truth==0]['weight'],bins=5000,color='b',alpha=0.8,label='background',cumulative=-1)
         h2=plt.hist(dataTest[dataTest.truth==1]['pred'],weights=dataTest[dataTest.truth==1]['weight'],bins=5000,color='r',alpha=0.8,label='signal',cumulative=-1)
-        plt.yscale('log')
+        # plt.yscale('log')
         plt.ylabel('Cumulative event counts / 0.02')
         plt.xlabel('Classifier output')
         plt.legend()

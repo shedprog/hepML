@@ -72,7 +72,7 @@ expectedSignal=228.195*0.14*lumi
 
 #Pick a subset of events to limit size for messing about
 #be careful to pick randomly as the first half are signal and the second half background
-dfFull = dfFull.sample(100000,random_state=42)
+dfFull = dfFull.sample(120000,random_state=42)
 
 #Look at the variables in the trees:
 
@@ -175,6 +175,9 @@ if doClassification:
     print '\nMaking HEP plots'
     dnnC.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
 
+
+
+
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time
 
@@ -187,7 +190,7 @@ if doBdtClassification:
     print 'Preparing data'
 
     mlDataC = MlData(df,'signal') #insert the dataframe and tell it what the truth variable is
-    mlDataC.split(evalSize=0.0,testSize=0.3) #Split into train and test sets, leave out evaluation set for now 
+    mlDataC.split(evalSize=0.4,testSize=0.33) #Split into train and test sets, leave out evaluation set for now 
 
     # print 'Data output before standardise:'
     # mlDataC.output(number_of_lines=5)
@@ -233,7 +236,7 @@ if doXGBClassification:
     print 'Preparing data'
 
     mlDataC = MlData(df,'signal') #insert the dataframe and tell it what the truth variable is
-    mlDataC.split(evalSize=0.0,testSize=0.3) #Split into train and test sets, leave out evaluation set for now 
+    mlDataC.split(evalSize=0.0,testSize=0.33) #Split into train and test sets, leave out evaluation set for now 
 
     # print 'Data output before standardise:'
     # mlDataC.output(number_of_lines=5)
@@ -244,11 +247,11 @@ if doXGBClassification:
     mlDataC.output(number_of_lines=5)
 
     print 'Defining XGB'
-    bdt = Bdt(mlDataC,output+'/XGB',separation_facet=0.957)
+    bdt = Bdt(mlDataC,output+'/XGB')
 
     print 'Setup XGB'
-    
-    bdt.setup(cls=XGBClassifier,max_depth=1,gamma=0.3,min_child_weight=18)
+    # subsample': 0.85, 'colsample_bytree': 0.9, 'max_depth': 16, 'gamma': 0.4, 'min_child_weight': 3
+    bdt.setup(cls=XGBClassifier,objective= 'binary:logistic',subsample=0.85,colsample_bytree=0.9,max_depth=16,gamma=0.4,min_child_weight=3)
     # ========================XGBClassifier args===============================
     # max_depth=3, learning_rate=0.1, n_estimators=100, silent=True, 
     # objective='binary:logistic', booster='gbtree', n_jobs=1, nthread=None, 
@@ -258,6 +261,12 @@ if doXGBClassification:
 
     print 'Fitting XGB'
     bdt.fit()
+
+    # bdt.change_separation_facet(0.5)
+    # print bdt.asimov_output()
+
+    # bdt.change_separation_facet(0.95)
+    # print bdt.asimov_output()
 
     print 'Diagnostic XGB'  
     bdt.diagnostics()
@@ -323,7 +332,7 @@ if doHyperOpt:
 
     print 'Preparing data'
     mlDataC = MlData(df,'signal') #insert the dataframe and tell it what the truth variable is
-    mlDataC.split(evalSize=0.0,testSize=0.3) #Split into train and test sets, leave out evaluation set for now 
+    mlDataC.split(evalSize=0.0,testSize=0.33) #Split into train and test sets, leave out evaluation set for now 
 
     # print 'Data output before standardise:'
     # mlDataC.output(number_of_lines=5)
@@ -334,30 +343,43 @@ if doHyperOpt:
     mlDataC.output(number_of_lines=5)
 
     print 'Defining XGB'
-    bdt = Bdt(mlDataC,output+'/XGB',separation_facet=0.957)
+    bdt = Bdt(mlDataC,output+'/XGB')
 
     space4rf = {
-        'max_depth':hp.choice('max_depth',range(1,10)),
+        'max_depth':hp.choice('max_depth',range(1,20)),
         'min_child_weight':hp.choice('min_child_weight',range(1,20)),
         'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
-        # 'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
-        # 'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
-        # 'reg_alpha': hp.choice('reg_alpha',[1e-5, 1e-2, 0.1, 1, 100]),
-        # 'eval_metric':hp.choice('eval_metric',['rmse','mae','logloss','error','merror','mlogloss','auc']),
-        # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
-        # 'n_estimators': hp.choice('n_estimators',range(80,800)),
+        'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
+        'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
+        # 'reg_alpha': hp.choice('reg_alpha',[1e-2, 0.1, 1, 100]), 
+        # # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+        # # 'n_estimators': hp.choice('n_estimators',range(80,800)),
         # 'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
 
     }
+    param_names = list(space4rf.keys())
+    print param_names
 
     trials = Trials()
     
     bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
     
     # f = bdt.hyperopt_train_test(XGBClassifier())
-    best = fmin(bdt.hyperopt_train_test_xgb, space4rf, algo=tpe.suggest, max_evals=100, trials=trials)
+    best = fmin(bdt.hyperopt_train_test, space4rf, algo=tpe.suggest, max_evals=200, trials=trials)
 
     print "best:"
     print best
+    print space_eval(space4rf, best)
 
     bdt.print_best_hyperopt_results()
+
+    param_names = list(space4rf.keys())
+    for i in range(len(param_names)):
+        f, ax = plt.subplots(1)#, figsize=(10,10))
+        xs = [t['misc']['vals']['%s' % param_names[i]] for t in trials.trials]
+        ys = [-t['result']['loss'] for t in trials.trials]
+        ax.scatter(xs, ys, s=20, linewidth=0.01, alpha=0.8)
+        ax.set_title('hyperopt tuning', fontsize=18)
+        ax.set_xlabel('%s' % param_names[i], fontsize=12)
+        ax.set_ylabel('Asimov loss', fontsize=12)
+        f.savefig(output+'/%s.pdf' % param_names[i])

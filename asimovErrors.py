@@ -1,4 +1,5 @@
 from numpy import log,power,sqrt
+from keras import backend as K
 eps=0.000001
 
 # s,b cnts observed in experimentm 
@@ -7,8 +8,7 @@ eps=0.000001
 # Asimov significance
 def Z(s,b,sig=None):
     #if sig == None: sig=eps
-    return sqrt( -2.0/(sig*sig)*log( b/( b+(b*b)*(sig*sig))*(sig*sig)*s+1.0)+ \
-           2.0*( b+s)*log(( b+s)*( b+(b*b)*(sig*sig))/( (b*b)+( b+s)*(b*b)*(sig*sig))))
+    return sqrt( -2.0/(sig*sig)*log( b/( eps + b+(b*b)*(sig*sig))*(sig*sig)*s+1.0)+ 2.0*( b+s)*log(( b+s)*( b+(b*b)*(sig*sig))/(eps + (b*b)+( b+s)*(b*b)*(sig*sig))+eps))
 
 # error propagation on Asimov significance
 def eZ(s,es,b,eb,sig=None):
@@ -24,9 +24,24 @@ def wghtd_eZ(scale_s,n_s,scale_b,n_b,sig=None):
     return eZ(scale_s*n_s,scale_s*sqrt(n_s),scale_b*n_b,scale_b*sqrt(n_b),sig)
 
 def asimov_scorer_function(y_true,y_pred,sig = 0.001):
-	_all = y_true[y_pred == 1]
-	signal, back = len(_all[_all == 1]), len(_all[_all == 0])
-	return 1/Z(signal, back, sig=sig)
+	# global expectedSignal,expectedBkgd
+	# _all = y_true[y_pred == 1]
+	# signal, back = len(_all[_all == 1]), len(_all[_all == 0])
+	lumi=30. #luminosity in /fb
+	expectedBkgd=844000.*8.2e-4*lumi #cross section of ttbar sample in fb times efficiency measured by Marco
+	expectedSignal=228.195*0.14*lumi 
+
+	signalWeight=expectedSignal/sum(y_true)# /len(y_true[y_true ==])
+	bkgdWeight=expectedBkgd/sum(1-y_true)
+
+	s = signalWeight*sum(y_pred*y_true)
+	b = bkgdWeight*sum(y_pred*(1-y_true))
+	print "signal = ",s,"bkgd = ",b
+	return 1./Z(s, b, sig=sig)
+
+def asimov_eval_matrics(y_pred, dataMATRIX):
+  	y_true = dataMATRIX.get_label()
+	return 'asimov_loss',float(asimov_scorer_function(y_true,y_pred,sig = 0.001))
 
 # example usage
 # Z(14,5,0.3)                   : 3.6149635359712184

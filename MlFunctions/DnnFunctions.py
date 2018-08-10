@@ -3,6 +3,8 @@ from keras.layers import Dense,Dropout
 from keras import regularizers
 from keras import backend as K
 
+from functools import wraps
+
 def findLayerSize(layer,refSize):
 
     if isinstance(layer, float):
@@ -226,6 +228,44 @@ def asimovSignificanceFull(expectedSignal,expectedBkgd,systematic):
         return K.sqrt(2*((s+b)*K.log((s+b)*(b+sigB*sigB)/(b*b+(s+b)*sigB*sigB+K.epsilon())+K.epsilon())-b*b*K.log(1+sigB*sigB*s/(b*(b+sigB*sigB)+K.epsilon()))/(sigB*sigB+K.epsilon()))) #Add the epsilon to avoid dividing by 0
 
     return asimovSignificance
+
+# modification 08.08.2018 by Mykyta
+# class AsimLoss():
+
+#     def __init__(self,expectedSignal,expectedBkgd,systematic):
+#         self.expectedSignal = expectedSignal
+#         self.expectedBkgd = expectedBkgd
+#         self.systematic = systematic
+
+#     def __call__(self,y_true,y_pred):
+#         signalWeight=self.expectedSignal/K.sum(y_true)
+#         bkgdWeight=self.expectedSignal/K.sum(1-y_true)
+
+#         s = signalWeight*K.sum(K.round(y_pred)*y_true)
+#         b = bkgdWeight*K.sum(K.round(y_pred)*(1-y_true))
+#         sigB=systematic*b
+
+#         return 1./K.sqrt(2*((s+b)*K.log((s+b)*(b+sigB*sigB)/(b*b+(s+b)*sigB*sigB+\
+#             K.epsilon())+K.epsilon())-b*b*K.log(1+sigB*sigB*s/(b*(b+sigB*sigB)+K.epsilon()))/(sigB*sigB+K.epsilon())))
+
+# def asimovSignificanceLossFull(expectedSignal,expectedBkgd,systematic):
+#     '''Define a loss function that calculates the significance based on fixed
+#     expected signal and expected background yields for a given batch size'''
+
+#     # @wraps(args)
+#     def asimovSignificanceInv(y_true,y_pred):
+#         #Continuous version:
+#         expectedSignal,expectedBkgd,systematic = list(args)
+#         signalWeight=expectedSignal/K.sum(y_true)
+#         bkgdWeight=expectedBkgd/K.sum(1-y_true)
+
+#         s = signalWeight*K.sum(K.round(y_pred)*y_true)
+#         b = bkgdWeight*K.sum(K.round(y_pred)*(1-y_true))
+#         sigB=systematic*b
+
+#         return 1./K.sqrt(2*((s+b)*K.log((s+b)*(b+sigB*sigB)/(b*b+(s+b)*sigB*sigB+K.epsilon())+K.epsilon())-b*b*K.log(1+sigB*sigB*s/(b*(b+sigB*sigB)+K.epsilon()))/(sigB*sigB+K.epsilon()))) #Add the epsilon to avoid dividing by 0
+
+#     return asimovSignificanceInv
 
 
 def truePositive(y_true,y_pred):
