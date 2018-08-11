@@ -69,24 +69,35 @@ expectedBkgd=844000.*8.2e-4*lumi #cross section of ttbar sample in fb times effi
 expectedSignal=228.195*0.14*lumi 
 
 #read Higgs data
-initial_names = ['signal','lepton_pT','lepton_eta','lepton_phi','missing_energy_magnitude', 'missing_energy_phi',
-'jet_1_pt', 'jet_1_eta', 'jet_1_phi', 'jet_1_b-tag', 'jet_2_pt', 'jet_2_eta', 'jet_2_phi', 'jet_2_b-tag',
-'jet_3_pt', 'jet_3_eta', 'jet_3_phi', 'jet_3_b-tag', 'jet_4_pt', 'jet_4_eta', 'jet_4_phi', 'jet_4_b-tag',
-'m_jj', 'm_jjj', 'm_lv', 'm_jlv', 'm_bb', 'm_wbb', 'm_wwbb']
-dfFull = pd.read_csv('/nfs/dust/cms/user/elwoodad/higgsDataset/HIGGS2M_1.csv' , sep = ',',
-names = initial_names)
+# initial_names = ['signal','lepton_pT','lepton_eta','lepton_phi','missing_energy_magnitude', 'missing_energy_phi',
+# 'jet_1_pt', 'jet_1_eta', 'jet_1_phi', 'jet_1_b-tag', 'jet_2_pt', 'jet_2_eta', 'jet_2_phi', 'jet_2_b-tag',
+# 'jet_3_pt', 'jet_3_eta', 'jet_3_phi', 'jet_3_b-tag', 'jet_4_pt', 'jet_4_eta', 'jet_4_phi', 'jet_4_b-tag',
+# 'm_jj', 'm_jjj', 'm_lv', 'm_jlv', 'm_bb', 'm_wbb', 'm_wwbb']
+# dfFull = pd.read_csv('/nfs/dust/cms/user/elwoodad/higgsDataset/HIGGS2M_1.csv' , sep = ',',
+# names = initial_names)
+
+
+dfTrain = pd.read_csv('/nfs/dust/cms/user/mykytaua/Data/Higgs_kaggle/training.csv', sep = ',', header=0, 
+        na_values=-999,index_col=0)
+
+train = dfTrain
+print "Nan columns:", train[train.isnull().any(axis=1)].head() #['DER_mass_MMC'].head()
+
+# Some cosmetic
+dfTrain = dfTrain.dropna()
+dfTrain['Label'] = dfTrain['Label'].replace({'s': 1, 'b': 0})
 
 
 #===== Load the data from a pickle file (choose one of the two below) =====
 
 #Pick a subset of events to limit size for messing about
 #be careful to pick randomly as the first half are signal and the second half background
-dfFull = dfFull.sample(500000,random_state=42)
+# dfFull = dfFull.sample(500000,random_state=42)
 
 #Look at the variables in the trees:
 
-print 'The keys are:'
-print dfFull.keys()
+print 'The train set keys are:'
+print dfTrain.keys()
 
 #Define and select a subset of the variables:
 
@@ -100,26 +111,35 @@ print dfFull.keys()
 #         'selJet_phi2','selJet_pt2','selJet_eta2','selJet_m2']# third jet 4-vector
 # df=dfFull[subset]
 
-df=dfFull
+df = dfTrain
 
 # print 'The reduced keys are:'
 # print df.keys()
 print df
 
-# raw_input('Stop reading')
+raw_input('Stop reading')
 
 if makePlots:
     #===== Make a couple of plots: =====
 
     #Calculate the weights for each event and add them to the dataframe
-    signalWeight = expectedSignal/(df.signal==1).sum() #divide expected events by number in dataframe
-    bkgdWeight   = expectedBkgd/(df.signal==0).sum()
+    # signalWeight = expectedSignal/(df.signal==1).sum() #divide expected events by number in dataframe
+    # bkgdWeight   = expectedBkgd/(df.signal==0).sum()
 
     #Add a weights column with the correct weights for background and signal
-    df['weight'] = df['signal']*signalWeight+(1-df['signal'])*bkgdWeight
+    # df['weight'] = df['signal']*signalWeight+(1-df['signal'])*bkgdWeight
 
     #Choose some variables to plot and loop over them
-    varsToPlot = initial_names
+    varsToPlot = [u'DER_mass_MMC', u'DER_mass_transverse_met_lep', u'DER_mass_vis',
+       u'DER_pt_h', u'DER_deltaeta_jet_jet', u'DER_mass_jet_jet',
+       u'DER_prodeta_jet_jet', u'DER_deltar_tau_lep', u'DER_pt_tot',
+       u'DER_sum_pt', u'DER_pt_ratio_lep_tau', u'DER_met_phi_centrality',
+       u'DER_lep_eta_centrality', u'PRI_tau_pt', u'PRI_tau_eta',
+       u'PRI_tau_phi', u'PRI_lep_pt', u'PRI_lep_eta', u'PRI_lep_phi',
+       u'PRI_met', u'PRI_met_phi', u'PRI_met_sumet', u'PRI_jet_num',
+       u'PRI_jet_leading_pt', u'PRI_jet_leading_eta', u'PRI_jet_leading_phi',
+       u'PRI_jet_subleading_pt', u'PRI_jet_subleading_eta',
+       u'PRI_jet_subleading_phi', u'PRI_jet_all_pt',]
 
     for v in varsToPlot:
 
@@ -127,18 +147,37 @@ if makePlots:
         maxRange=max(df[v])
         minRange=min(df[v])
 	#Plot the signal and background but stacked on top of each other
-        plt.hist([df[df.signal==0][v],df[df.signal==1][v]], #Signal and background input
-                label=['background','signal'],
+        # plt.hist([df[df.Label=='b'][v],df[df.Label=='s'][v]], #Signal and background input
+        #         label=['background','signal'],
+        #         bins=50, range=[minRange,maxRange], 
+        #         stacked=True, color = ['g','r'],alpha=[0.4,0.7])
+        #         # weights= [df[df.Label=='b']['Weight'],df[df.Label=='s']['Weight']])
+        #         #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
+
+        plt.hist(df[df.Label==0][v], #Signal and background input
+                label='background',
                 bins=50, range=[minRange,maxRange], 
-                stacked=True, color = ['g','r'])
+                stacked=True, color = 'g',alpha=1,
+                weights= df[df.Label==0]['Weight'])
                 #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
+        
+        #histogram signal
+        plt.hist(df[df.Label==1][v], #Signal and background input
+                label='signal',
+                bins=50, range=[minRange,maxRange], 
+                stacked=True, color = 'r',alpha=0.8,
+                weights= df[df.Label==1]['Weight'])
+                #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
+
+        #histogram background
+        
         plt.yscale('log')
         plt.xlabel(v)
         plt.legend()
         plt.savefig(os.path.join(output,'hist_'+v+'.pdf')) #save the histogram
         plt.clf() #Clear it for the next one
 
-    df = df.drop('weight',axis=1) #drop the weight to stop inference from it as truth variable
+    df = df.drop('Weight',axis=1) #drop the weight to stop inference from it as truth variable
 
 if doClassification:
 
@@ -158,7 +197,7 @@ if doClassification:
 
     print 'Preparing data'
 
-    mlDataC = MlData(df,'signal') #insert the dataframe and tell it what the truth variable is
+    mlDataC = MlData(df.drop('Weight',axis=1),'Label',weights=df['Weight']) #insert the dataframe and tell it what the truth variable is
     mlDataC.split(evalSize=0.0,testSize=0.3) #Split into train and test sets, leave out evaluation set for now
 
     #Now decide whether we want to standardise the dataset
@@ -187,7 +226,8 @@ if doClassification:
     dnnC.diagnostics() #generic diagnostics, ROC curves etc
     # hep specific plots including sensitivity estimates with a flat systematic etc: 
     print '\nMaking HEP plots'
-    dnnC.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
+    #dnnC.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
+    dnnC.makeHepPlots(systematics=[0.2],makeHistograms=False)
 
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time

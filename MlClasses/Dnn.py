@@ -98,8 +98,7 @@ class Dnn(object):
 
         #Fit the model and save the history for diagnostics
         #additionally pass the testing data for further diagnostic results
-        self.history = self.model.fit(self.data.X_train.as_matrix(), self.data.y_train.as_matrix(), 
-                sample_weight=self.data.weights_train,
+        self.history = self.model.fit(self.data.X_train.as_matrix(), self.data.y_train.as_matrix(), sample_weight=self.data.weights_train,
                 validation_data=(self.data.X_test.as_matrix(),self.data.y_test.as_matrix(),self.data.weights_test),
                 epochs=epochs, batch_size=batch_size,**kwargs)
 
@@ -375,7 +374,7 @@ class Dnn(object):
 
         return self.score
 
-    def makeHepPlots(self,expectedSignal,expectedBackground,systematics=[0.0001],makeHistograms=True,subDir=None,customPrediction=None):
+    def makeHepPlots(self,expectedSignal=None,expectedBackground=None,systematics=[0.0001],makeHistograms=True,subDir=None,customPrediction=None):
         '''Plots intended for binary signal/background classification
         
             - Plots significance as a function of discriminator output
@@ -406,10 +405,12 @@ class Dnn(object):
         dataTest['truth']=self.data.y_test.as_matrix()
         dataTest['pred']=predictionsTest
 
-        signalSizeTest = len(dataTest[dataTest.truth==1])
-        bkgdSizeTest = len(dataTest[dataTest.truth==0])
-        signalWeightTest = float(expectedSignal)/signalSizeTest
-        bkgdWeightTest = float(expectedBackground)/bkgdSizeTest
+        #signalSizeTest = len(dataTest[dataTest.truth==1])
+        #bkgdSizeTest = len(dataTest[dataTest.truth==0])
+        #signalWeightTest = float(expectedSignal)/signalSizeTest
+        #bkgdWeightTest = float(expectedBackground)/bkgdSizeTest
+        signalWeightTest = self.weights_test[self.y==1]
+        bkgdWeightTest = self.weights_test[self.y==0]
 
         def applyWeight(row,sw,bw):
             if row.truth==1: return sw
@@ -486,10 +487,12 @@ class Dnn(object):
                 data['truth']=self.data.y.as_matrix()
                 data['pred']=predictions
 
-                signalSize = len(data[data.truth==1])
-                bkgdSize = len(data[data.truth==0])
-                signalWeight = float(expectedSignal)/signalSize
-                bkgdWeight = float(expectedBackground)/bkgdSize
+                #signalSize = len(data[data.truth==1])
+                #bkgdSize = len(data[data.truth==0])
+                #signalWeight = float(expectedSignal)/signalSize
+                #bkgdWeight = float(expectedBackground)/bkgdSize
+                signalWeight = self.weights_dev[self.y==1]
+                signalWeight = self.weights_dev[self.y==0]
 
                 data['weight'] = data.apply(lambda row: applyWeight(row,signalWeight,bkgdWeight), axis=1)
 

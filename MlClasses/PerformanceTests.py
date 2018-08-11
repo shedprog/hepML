@@ -9,6 +9,9 @@ import os
 import numpy as np
 
 def classificationReport(y_predicted,clfResult,y_test,outputFile=None):
+    print y_predicted
+    print clfResult
+    print y_test
     report = classification_report(y_test, y_predicted,
                                             target_names=["background", "signal"])
     auc= "Area under ROC curve: %.4f"%(roc_auc_score(y_test,clfResult))
@@ -58,8 +61,8 @@ def compareTrainTest(clf, X_train, y_train, X_test, y_test, output, bins=30,appe
     '''Compares the decision function for the train and test BDT'''
     decisions = []
     for X,y in ((X_train, y_train), (X_test, y_test)):
-        d1 = clf(X[y==1]).ravel()
-        d2 = clf(X[y==0]).ravel()
+        d1 = clf(X[y>0.5]).ravel()
+        d2 = clf(X[y<0.5]).ravel()
         decisions += [d1, d2]
         
     low = min(np.min(d) for d in decisions)
