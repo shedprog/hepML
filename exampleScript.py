@@ -80,13 +80,17 @@ expectedSignal=228.195*0.14*lumi
 dfTrain = pd.read_csv('/nfs/dust/cms/user/mykytaua/Data/Higgs_kaggle/training.csv', sep = ',', header=0, 
         na_values=-999,index_col=0)
 
-train = dfTrain
-print "Nan columns:", train[train.isnull().any(axis=1)].head() #['DER_mass_MMC'].head()
+#print "Nan columns:", train[train.isnull().any(axis=1)].head() #['DER_mass_MMC'].head()
 
 # Some cosmetic
+size_all = dfTrain.shape[0]
 dfTrain = dfTrain.dropna()
 dfTrain['Label'] = dfTrain['Label'].replace({'s': 1, 'b': 0})
 
+size_3jet_only =  dfTrain.shape[0]
+
+re_scale = size_all/size_3jet_only
+dfTrain['Weight'] = dfTrain['Weight'] * re_scale
 
 #===== Load the data from a pickle file (choose one of the two below) =====
 
@@ -112,12 +116,15 @@ print dfTrain.keys()
 # df=dfFull[subset]
 
 df = dfTrain
+print 'back: ',len(df[df.Label==0]['Label'])
+print 'signal: ',len(df[df.Label==1]['Label'])
+
 
 # print 'The reduced keys are:'
 # print df.keys()
-print df
 
-raw_input('Stop reading')
+
+
 
 if makePlots:
     #===== Make a couple of plots: =====
@@ -130,44 +137,45 @@ if makePlots:
     # df['weight'] = df['signal']*signalWeight+(1-df['signal'])*bkgdWeight
 
     #Choose some variables to plot and loop over them
-    varsToPlot = [u'DER_mass_MMC', u'DER_mass_transverse_met_lep', u'DER_mass_vis',
-       u'DER_pt_h', u'DER_deltaeta_jet_jet', u'DER_mass_jet_jet',
-       u'DER_prodeta_jet_jet', u'DER_deltar_tau_lep', u'DER_pt_tot',
-       u'DER_sum_pt', u'DER_pt_ratio_lep_tau', u'DER_met_phi_centrality',
-       u'DER_lep_eta_centrality', u'PRI_tau_pt', u'PRI_tau_eta',
-       u'PRI_tau_phi', u'PRI_lep_pt', u'PRI_lep_eta', u'PRI_lep_phi',
-       u'PRI_met', u'PRI_met_phi', u'PRI_met_sumet', u'PRI_jet_num',
-       u'PRI_jet_leading_pt', u'PRI_jet_leading_eta', u'PRI_jet_leading_phi',
-       u'PRI_jet_subleading_pt', u'PRI_jet_subleading_eta',
-       u'PRI_jet_subleading_phi', u'PRI_jet_all_pt',]
-
+    #varsToPlot = [u'DER_mass_MMC', u'DER_mass_transverse_met_lep', u'DER_mass_vis',
+    #   u'DER_pt_h', u'DER_deltaeta_jet_jet', u'DER_mass_jet_jet',
+    #   u'DER_prodeta_jet_jet', u'DER_deltar_tau_lep', u'DER_pt_tot',
+    #   u'DER_sum_pt', u'DER_pt_ratio_lep_tau', u'DER_met_phi_centrality',
+    #   u'DER_lep_eta_centrality', u'PRI_tau_pt', u'PRI_tau_eta',
+    #   u'PRI_tau_phi', u'PRI_lep_pt', u'PRI_lep_eta', u'PRI_lep_phi',
+    #   u'PRI_met', u'PRI_met_phi', u'PRI_met_sumet', u'PRI_jet_num',
+    #   u'PRI_jet_leading_pt', u'PRI_jet_leading_eta', u'PRI_jet_leading_phi',
+    #   u'PRI_jet_subleading_pt', u'PRI_jet_subleading_eta',
+    #   u'PRI_jet_subleading_phi', u'PRI_jet_all_pt',]
+    varsToPlot = [u'DER_mass_MMC']	
+    
     for v in varsToPlot:
 
         print 'Plotting',v
         maxRange=max(df[v])
         minRange=min(df[v])
 	#Plot the signal and background but stacked on top of each other
-        # plt.hist([df[df.Label=='b'][v],df[df.Label=='s'][v]], #Signal and background input
-        #         label=['background','signal'],
-        #         bins=50, range=[minRange,maxRange], 
-        #         stacked=True, color = ['g','r'],alpha=[0.4,0.7])
-        #         # weights= [df[df.Label=='b']['Weight'],df[df.Label=='s']['Weight']])
-        #         #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
-
-        plt.hist(df[df.Label==0][v], #Signal and background input
-                label='background',
+        plt.hist([df[df.Label==1][v],df[df.Label==0][v]], #Signal and background input
+                label=['background','signal'],
                 bins=50, range=[minRange,maxRange], 
-                stacked=True, color = 'g',alpha=1,
-                weights= df[df.Label==0]['Weight'])
+                stacked=True, color = ['r','g'],
+                weights= [df[df.Label==1]['Weight'],df[df.Label==0]['Weight']])
+                 #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
+
+        #plt.hist(df[df.Label==0][v], #Signal and background input
+        #        label='background',
+        #        bins=50, range=[minRange,maxRange], 
+        #        stacked=True, color = 'g',alpha=1,
+        #        weights= df[df.Label==0]['Weight'])
                 #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
         
         #histogram signal
-        plt.hist(df[df.Label==1][v], #Signal and background input
-                label='signal',
-                bins=50, range=[minRange,maxRange], 
-                stacked=True, color = 'r',alpha=0.8,
-                weights= df[df.Label==1]['Weight'])
-                #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
+        #plt.hist(df[df.Label==1][v], #Signal and background input
+        #        label='signal',
+        #        bins=50, range=[minRange,maxRange], 
+        #        stacked=True, color = 'r',alpha=0.8,
+        #        weights= df[df.Label==1]['Weight'])
+        #        #weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
 
         #histogram background
         
@@ -214,12 +222,13 @@ if doClassification:
     #build a 2 hidden layer model with 50 neurons each layer
     #Note: if the number of neurons is a float it treats it as a proportion of the input
     # loss is binary cross entropy and one sigmoid neuron is used for output
-    dnnC.setup(hiddenLayers=[20,20],dropOut=None,l2Regularization=None,loss='binary_crossentropy') 
+    dnnC.setup(hiddenLayers=[1.0],dropOut=None,l2Regularization=None,loss='binary_crossentropy')
+
 
     #fit the defined network with the data passed to it
     #define an early stopping if the loss stops decreasing after 2 epochs
     print 'Fitting'
-    dnnC.fit(epochs=100,batch_size=128,callbacks=[earlyStopping])
+    dnnC.fit(epochs=200,batch_size=128,callbacks=[earlyStopping])
 
     #now produce some diagnostics to see how it went
     print 'Making diagnostics'
@@ -227,7 +236,7 @@ if doClassification:
     # hep specific plots including sensitivity estimates with a flat systematic etc: 
     print '\nMaking HEP plots'
     #dnnC.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
-    dnnC.makeHepPlots(systematics=[0.2],makeHistograms=False)
+    dnnC.makeHepPlots(systematics=[0.1],makeHistograms=False)
 
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time

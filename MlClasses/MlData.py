@@ -15,8 +15,8 @@ class MlData(object):
             assert len(weights)==len(self.y), 'Weights must be same size as input'
 
         self.weights=weights
-	print self.weights
-	raw_input('stop')
+	#print self.weights
+	#raw_input('stop')
         self.isSplit=False
         self.standardised=False #keep track of the train and test set standardisation
         self.standardisedDev=False #keep track of the development test standardisation

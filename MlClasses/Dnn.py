@@ -98,8 +98,8 @@ class Dnn(object):
 
         #Fit the model and save the history for diagnostics
         #additionally pass the testing data for further diagnostic results
-        self.history = self.model.fit(self.data.X_train.as_matrix(), self.data.y_train.as_matrix(), sample_weight=self.data.weights_train,
-                validation_data=(self.data.X_test.as_matrix(),self.data.y_test.as_matrix(),self.data.weights_test),
+        self.history = self.model.fit(self.data.X_train.as_matrix(), self.data.y_train.as_matrix(), sample_weight=None,
+                validation_data=(self.data.X_test.as_matrix(),self.data.y_test.as_matrix(),None),
                 epochs=epochs, batch_size=batch_size,**kwargs)
 
         #Add stuff to the config
@@ -374,7 +374,7 @@ class Dnn(object):
 
         return self.score
 
-    def makeHepPlots(self,expectedSignal=None,expectedBackground=None,systematics=[0.0001],makeHistograms=True,subDir=None,customPrediction=None):
+    def makeHepPlots(self,systematics=[0.0001],makeHistograms=True,subDir=None,customPrediction=None):
         '''Plots intended for binary signal/background classification
         
             - Plots significance as a function of discriminator output
@@ -409,15 +409,15 @@ class Dnn(object):
         #bkgdSizeTest = len(dataTest[dataTest.truth==0])
         #signalWeightTest = float(expectedSignal)/signalSizeTest
         #bkgdWeightTest = float(expectedBackground)/bkgdSizeTest
-        signalWeightTest = self.weights_test[self.y==1]
-        bkgdWeightTest = self.weights_test[self.y==0]
+        signalWeightTest = self.data.weights_test[self.data.y_test==1]
+        bkgdWeightTest = self.data.weights_test[self.data.y_test==0]
 
-        def applyWeight(row,sw,bw):
-            if row.truth==1: return sw
-            else: return bw
+        #def applyWeight(row,sw,bw):
+        #    if row.truth==1: return sw
+        #    else: return bw
 
-        dataTest['weight'] = dataTest.apply(lambda row: applyWeight(row,signalWeightTest,bkgdWeightTest), axis=1)
-
+        # dataTest['weight'] = dataTest.apply(lambda row: applyWeight(row,signalWeightTest,bkgdWeightTest), axis=1)
+        dataTest['weight'] = self.data.weights_test
         #save it for messing about
         #dataTest.to_pickle('dataTestSigLoss.pkl')
 
@@ -426,6 +426,13 @@ class Dnn(object):
 
         h1=plt.hist(dataTest[dataTest.truth==0]['pred'],weights=dataTest[dataTest.truth==0]['weight'],bins=5000,color='b',alpha=0.8,label='background',cumulative=-1)
         h2=plt.hist(dataTest[dataTest.truth==1]['pred'],weights=dataTest[dataTest.truth==1]['weight'],bins=5000,color='r',alpha=0.8,label='signal',cumulative=-1)
+
+        # print '~~~~~~~~~~~~HIGROGRAM~~~~~~~~~~~~~~~'
+        # print len(dataTest[dataTest.truth==0]['pred']), len(bkgdWeightTest)
+        # print len(dataTest[dataTest.truth==1]['pred']),len(signalWeightTest)
+
+        h1=plt.hist(dataTest[dataTest.truth==0]['pred'],weights=bkgdWeightTest,bins=5000,color='b',alpha=0.8,label='background',cumulative=-1)
+        h2=plt.hist(dataTest[dataTest.truth==1]['pred'],weights=signalWeightTest,bins=5000,color='r',alpha=0.8,label='signal',cumulative=-1)
         plt.yscale('log')
         plt.ylabel('Cumulative event counts / 0.02')
         plt.xlabel('Classifier output')
@@ -434,10 +441,11 @@ class Dnn(object):
         plt.savefig(os.path.join(self.output,'cumulativeWeightedDiscriminator.pdf'))
         plt.clf()
 
-        #From the cumulative histograms plot s/b and s/sqrt(s+b)
+        #From the cumulative histograms plot s/b and s/sqrt(s+b
 
         s=h2[0]
         b=h1[0]
+        # print len(s),len(b)
 
         plt.plot((h1[1][:-1]+h1[1][1:])/2,s/b)
         plt.title('sig/bkgd on test set')
@@ -456,13 +464,15 @@ class Dnn(object):
             #plt.plot((h1[1][:-1]+h1[1][1:])/2,Z(s,b,systematic))
             toPlot = Z(s,b,systematic)
             plt.plot((h1[1][:-1]+h1[1][1:])/2,toPlot)
-            es = signalWeightTest*np.sqrt(s/signalWeightTest)
-            eb = bkgdWeightTest*np.sqrt(b/bkgdWeightTest)
+            # es = signalWeightTest*np.sqrt(s/signalWeightTest)
+            # eb = bkgdWeightTest*np.sqrt(b/bkgdWeightTest)
+            es, eb = np.sqrt(s), np.sqrt(b)
             error=eZ(s,es,b,eb,systematic)
             # plt.plot((h1[1][:-1]+h1[1][1:])/2,toPlot-error)
             # plt.plot((h1[1][:-1]+h1[1][1:])/2,toPlot+error)
             plt.fill_between((h1[1][:-1]+h1[1][1:])/2,toPlot-error,toPlot+error,linewidth=0,alpha=0.6)
             maxIndex=np.argmax(toPlot)
+            print ' best significance is '+str(round(toPlot[maxIndex],2))        
             plt.title('Systematic '+str(systematic)+', s: '+str(round(s[maxIndex],1))+', b:'+str(round(b[maxIndex],1))+', best significance is '+str(round(toPlot[maxIndex],2))+' +/- '+str(round(error[maxIndex],2)))
             plt.xlabel('Cut on classifier score')
             plt.ylabel('Asimov estimate of significance')
@@ -491,19 +501,21 @@ class Dnn(object):
                 #bkgdSize = len(data[data.truth==0])
                 #signalWeight = float(expectedSignal)/signalSize
                 #bkgdWeight = float(expectedBackground)/bkgdSize
-                signalWeight = self.weights_dev[self.y==1]
-                signalWeight = self.weights_dev[self.y==0]
+                #signalWeight = self.data.weights[self.data.y==1]
+                #signalWeight = self.data.weights[self.data.y==0]
 
-                data['weight'] = data.apply(lambda row: applyWeight(row,signalWeight,bkgdWeight), axis=1)
+                # data['weight'] = data.apply(lambda row: applyWeight(row,signalWeight,bkgdWeight), axis=1)
+                dataTest['weight'] = self.data.weights
+
 
                 #Plot all other interesting variables given classification
                 p = Plotter(data,os.path.join(self.output,'allHistsSyst'+str(systematic).replace('.','p')))
                 p1 = Plotter(data[data.pred>float(maxIndex)/len(toPlot)],os.path.join(self.output,'signalPredHistsSyst'+str(systematic).replace('.','p')))
                 p2 = Plotter(data[data.pred<float(maxIndex)/len(toPlot)],os.path.join(self.output,'bkgdPredHistsSyst'+str(systematic).replace('.','p')))
 
-                p.plotAllStackedHists1D('truth',weights='weight',log=True)
-                p1.plotAllStackedHists1D('truth',weights='weight',log=True)
-                p2.plotAllStackedHists1D('truth',weights='weight',log=True)
+                p.plotAllStackedHists1D('truth',weights=self.data.weights,log=True)
+                p1.plotAllStackedHists1D('truth',weights=self.data.weights,log=True)
+                p2.plotAllStackedHists1D('truth',weights=self.data.weights,log=True)
 
         if subDir:
             self.output=oldOutput

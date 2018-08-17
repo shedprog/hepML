@@ -9,9 +9,9 @@ import os
 import numpy as np
 
 def classificationReport(y_predicted,clfResult,y_test,outputFile=None):
-    print y_predicted
-    print clfResult
-    print y_test
+    # print y_predicted
+    # print clfResult
+    # print y_test
     report = classification_report(y_test, y_predicted,
                                             target_names=["background", "signal"])
     auc= "Area under ROC curve: %.4f"%(roc_auc_score(y_test,clfResult))
