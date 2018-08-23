@@ -1,53 +1,31 @@
+import os
+import numpy as np
+from functools import partial, update_wrapper
+import pandas as pd
+import matplotlib.pyplot as plt
+
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import AdaBoostClassifier
-import os
-
-from MlClasses.PerformanceTests import classificationReport,rocCurve,compareTrainTest,learningCurve
-from MlClasses.Config import Config
-
-#For cross validation and HP tuning
 from sklearn.model_selection import cross_val_score
 from sklearn.model_selection import GridSearchCV
-
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-from asimovErrors import Z,eZ ,asimov_scorer_function, asimov_eval_matrics
-from pandasPlotting.Plotter import Plotter
-
-# Libs added at 17.07.18
-from MlClasses.xgboost_update import XGBClassifier
 from sklearn.metrics import accuracy_score
 import sklearn.metrics as metrics
-
 from hyperopt import fmin, tpe, hp, STATUS_OK, Trials,space_eval
 
-from MlFunctions.DnnFunctions import *
+from pandasPlotting.Plotter import Plotter
+from asimovErrors import Z,eZ,asimov_scorer_function,asimov_metric
+from MlClasses.PerformanceTests import classificationReport,rocCurve,compareTrainTest,learningCurve
+from MlClasses.Config import Config
+#from MlFunctions.DnnFunctions import *
 
-# class XGBClassifier(xgboost.XGBClassifier):
-    
-#     # take probabilities of the first class only
-#     def predict_proba(self,X_test):
-#         return super(XGBClassifier, self).predict_proba(X_test)[:,1]
 
-#     # # Convert predict proba output to decision function
-#     # # predict_proba = 1 / (1 + exp( -decision_function  ))
-#     # def decision_function(self, X_test):
-
-#     #     # if LEARN set is very bed, the error can appear
-#     #     # ValueError: Input contains NaN, infinity or a value too large for dtype('float32')
-#     #     return -np.log( 1.0 / self.class1_predict_proba - 1.0 )
-
-#     # # definding score method
-#     # def score(self, X_test, y_test):
-#     #     return accuracy_score(y_test, self.predict(X_test))
 
 
 class Bdt(object):
     '''Take some data split into test and train sets and train a bdt on it'''
     def __init__(self,data,output=None):
 
-        print "~~Data split~~"
+        print "Data split result: "
         print "train:",len(data.y_train)
         print "test:",len(data.y_test)
         print "eval:",len(data.y_eval)
@@ -64,51 +42,72 @@ class Bdt(object):
 
         self.bestHyperOpr_score = None
         self.bestHyperOpt_param = None
-
-        # self.scorer = metrics.make_scorer(asimovSignificanceLossFull(expectedSignal,expectedBkgd,systematics), 
-        #     greater_is_better=True, needs_proba=False)
-        # self.expectedSignal,self.expectedBkgd,self.systematics = expectedSignal,expectedBkgd,systematics
-        # self.scorer = asimovSignificanceLossFull(expectedSignal,expectedBkgd,systematics)
-
-        # self.asimov_scorer = AsimLoss(expectedSignal,expectedBkgd,systematics)
-        # self.metr = asimovSignificanceLossFull(expectedSignal,expectedBkgd,systematics)
-
-        self.scorer = metrics.make_scorer(asimov_scorer_function,
-            greater_is_better=True, needs_proba=False)
-
-        self.separation_facet = 0.5
-    # def setup(self,dtArgs={},bdtArgs={}):
+  
+        #self.scorer = metrics.make_scorer(asimov_scorer_function,
+        #    greater_is_better = True, needs_proba = False)
     
-    def setup(self,cls=None,**init_param):
-        # We define cls and init_parameters to re-initialize them later
-        # for the every iteration at hyper-parametr tunning
-        self.cls = cls
-        self.init_param = init_param
+    def setup(self,cls=None,objective=None,expected_events=[None,None],sigma=0.1,**bdtArgs):
+        '''This method represents initialization of bosted DT. In case of objective != None - cls has to be initialized with 
+        customize objective function'''
+        expectedSignal,expectedBack = expected_events[0],expected_events[1]
 
-        #define our initial bdt
-        self.bdt = self.cls(**self.init_param)
+        if objective == None:
 
-        self.config.addToConfig('Class used: ',self.bdt)
+            self.cls = cls
+            self.bdt = self.cls(**bdtArgs)
+
+
+        if objective != None:
+
+            obj_fun = partial(objective,
+			      expectedSignal = expectedSignal,
+			      expectedBkgd = expectedBack,
+			      sigma=sigma)
+
+	    
+	    self.init_param = dict(objective=obj_fun,**bdtArgs) 
+            self.cls = cls 
+            self.bdt = self.cls(**self.init_param) 
+
+
+        # self.config.addToConfig('Class used: ',self.bdt)
         self.config.addToConfig('Vars used: ',self.data.X.columns.values)
         self.config.addToConfig('BDT was activated: ',type(self.bdt).__name__)
         self.config.addToConfig('nEvalEvents',len(self.data.y_eval.index))
         self.config.addToConfig('nDevEvents',len(self.data.y_dev.index))
         self.config.addToConfig('nTrainEvents',len(self.data.y_train.index))
         self.config.addToConfig('nTestEvents',len(self.data.y_test.index))
-        # self.config.addToConfig('DT arguments',dtArgs)
-        # self.config.addToConfig('BDT arguments',bdtArgs)
+        self.config.addToConfig('DT arguments',bdtArgs)
+    
+    def setup_metrics(self,expectedSignal,expectedBkgd,sigma):
+        '''Subroutine to setup metrics which is used 
+        inside hyperopt minimization'''
+        self.scorer = partial(asimov_scorer_function,
+                           expectedBkgd = expectedBkgd,
+                           expectedSignal = expectedSignal,
+                           sig = sigma)
+        self.metrics = partial(asimov_metric,
+                           expectedBkgd = expectedBkgd,
+                           expectedSignal = expectedSignal,
+                           sig = sigma)
+	
+        #update_wrapper(metrics_,partial)
+
+        #self.scorer = metrics.make_scorer(metrics_, 
+        #                                  greater_is_better = True,
+        #                                  needs_proba = False)
+
 
     def fit(self):
         # self.history = self.bdt.fit(self.data.X_eval, self.data.y_eval)
-        eval_set = [(self.data.X_test, self.data.y_test)] 
-        self.history = self.bdt.fit(self.data.X_train, self.data.y_train,eval_metric=asimov_eval_matrics, eval_set=eval_set, verbose=True)
+        # eval_set = [(self.data.X_test, self.data.y_test)] 
+        self.history = self.bdt.fit(self.data.X_train,self.data.y_train,
+                                    eval_set=[(self.data.X_test,self.data.y_test)],
+                                    early_stopping_rounds=20,
+                                    eval_metric=self.metrics,verbose=True)
 
     def predict_proba(self,X_test):
         return self.bdt.predict_proba(X_test)[:,1]
-
-    def change_separation_facet(self,separation_facet):
-        self.separation_facet = separation_facet
-        self.bdt.separation_facet = separation_facet
 
     def crossValidation(self,kfolds=3,n_jobs=4):
         '''K-means cross validation'''
@@ -132,13 +131,13 @@ class Bdt(object):
             self.bestHyperOpr_score = score
             self.bestHyperOpt_param = param
         
-        if score < self.bestHyperOpr_score:
+        if abs(score) < self.bestHyperOpr_score:
             self.bestHyperOpr_score = score
             self.bestHyperOpt_param = param
 
-        print '~~best~~:',self.bestHyperOpr_score, self.bestHyperOpt_param
-        print '__loss__:', score, param
-        return {'loss': score, 'status': STATUS_OK}
+        print 'best result: ',self.bestHyperOpr_score, 1.0/self.bestHyperOpr_score, self.bestHyperOpt_param
+        print 'current result: ', score, 1.0/score, param
+        return {'loss': abs(score), 'status': STATUS_OK}
 
     def print_best_hyperopt_results(self):
         print '~~~~~~~~~~~ best values ~~~~~~~~~~~~~~'
@@ -325,11 +324,15 @@ class Bdt(object):
             plt.fill_between((h1[1][:-1]+h1[1][1:])/2,toPlot-error,toPlot+error,linewidth=0,alpha=0.6)
             maxIndex=np.argmax(toPlot)
             plt.title('Systematic '+str(systematic)+', s: '+str(round(s[maxIndex],1))+', b:'+str(round(b[maxIndex],1))+', best significance is '+str(round(toPlot[maxIndex],2))+' +/- '+str(round(error[maxIndex],2)))
-            plt.xlabel('Cut on classifier score')
+            
+	        plt.xlabel('Cut on classifier score')
             plt.ylabel('Asimov estimate of significance')
             plt.savefig(os.path.join(self.output,'asimovDiscriminatorSyst'+str(systematic).replace('.','p')+'.pdf'))
             plt.clf()
-
+	
+	        print "Best Asimov: ", str(round(toPlot[maxIndex],2))+' +/- '+str(round(error[maxIndex],2))
+	        print "Probability: ", ((h1[1][:-1]+h1[1][1:])/2)[maxIndex]    
+	
             if makeHistograms: #Do this on the full set
 
 
@@ -367,10 +370,6 @@ class Bdt(object):
 
         if subDir:
             self.output=oldOutput
-        
-        print '___Maximum of asimov score____'
-        print 'Asimov: ',max(toPlot)
-        x_prob = (h1[1][:-1]+h1[1][1:])/2
-        print 'Probability: ',x_prob[list(toPlot).index(max(toPlot))]
+         
 
         pass

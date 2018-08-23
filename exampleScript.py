@@ -15,6 +15,8 @@ from MlClasses.Dnn import Dnn
 
 # from MlClasses.Bdt import Bdt
 from MlClasses.Bdt import *
+from MlClasses.asimov_obj import *
+from MlClasses.xgboost_update import XGBClassifier
 
 #===== Define some useful variables =====
 #
@@ -72,7 +74,7 @@ expectedSignal=228.195*0.14*lumi
 
 #Pick a subset of events to limit size for messing about
 #be careful to pick randomly as the first half are signal and the second half background
-dfFull = dfFull.sample(120000,random_state=42)
+dfFull = dfFull.sample(200000,random_state=42)
 
 #Look at the variables in the trees:
 
@@ -175,9 +177,6 @@ if doClassification:
     print '\nMaking HEP plots'
     dnnC.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
 
-
-
-
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time
 
@@ -249,9 +248,12 @@ if doXGBClassification:
     print 'Defining XGB'
     bdt = Bdt(mlDataC,output+'/XGB')
 
+    bdt.setup_metrics(expectedSignal,expectedBkgd,0.1)
+
     print 'Setup XGB'
-    # subsample': 0.85, 'colsample_bytree': 0.9, 'max_depth': 16, 'gamma': 0.4, 'min_child_weight': 3
-    bdt.setup(cls=XGBClassifier,objective= 'binary:logistic',subsample=0.85,colsample_bytree=0.9,max_depth=16,gamma=0.4,min_child_weight=3)
+    bdt.setup(cls=XGBClassifier,objective=asimov_obj,expected_events=[expectedSignal,expectedBkgd],
+	      sigma=0.3,separation_facet=0.5,n_estimators=1000,subsample=0.8,max_depth=17,gamma=0,min_child_weight=2,colsample_bylevel=0.6)
+
     # ========================XGBClassifier args===============================
     # max_depth=3, learning_rate=0.1, n_estimators=100, silent=True, 
     # objective='binary:logistic', booster='gbtree', n_jobs=1, nthread=None, 
@@ -272,7 +274,7 @@ if doXGBClassification:
     bdt.diagnostics()
 
     print 'Making HEP plots'
-    bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.2],makeHistograms=False)
+    bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.1,0.3,0.4],makeHistograms=False)
 
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time
@@ -352,8 +354,8 @@ if doHyperOpt:
         'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
         'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
         # 'reg_alpha': hp.choice('reg_alpha',[1e-2, 0.1, 1, 100]), 
-        # # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
-        # # 'n_estimators': hp.choice('n_estimators',range(80,800)),
+        # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+        # 'n_estimators': hp.choice('n_estimators',range(80,800)),
         # 'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
 
     }
@@ -362,10 +364,14 @@ if doHyperOpt:
 
     trials = Trials()
     
-    bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
-    
+    #bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
+    bdt.setup(cls=XGBClassifier,objective=asimov_obj,expected_events=[expectedSignal,expectedBkgd],
+              sigma=0.1,separation_facet=0.99)
+
+    bdt.setup_metrics(expectedSignal,expectedBkgd,0.1)
+
     # f = bdt.hyperopt_train_test(XGBClassifier())
-    best = fmin(bdt.hyperopt_train_test, space4rf, algo=tpe.suggest, max_evals=200, trials=trials)
+    best = fmin(bdt.hyperopt_train_test, space4rf, algo=tpe.suggest, max_evals=500, trials=trials)
 
     print "best:"
     print best
@@ -383,3 +389,6 @@ if doHyperOpt:
         ax.set_xlabel('%s' % param_names[i], fontsize=12)
         ax.set_ylabel('Asimov loss', fontsize=12)
         f.savefig(output+'/%s.pdf' % param_names[i])
+
+    print '----Timer stop----'
+    print 'General CPU time: ', time.time()-start_time

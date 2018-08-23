@@ -1,4 +1,4 @@
-from numpy import log,power,sqrt
+from numpy import log,power,sqrt,around
 from keras import backend as K
 eps=0.000001
 
@@ -23,29 +23,31 @@ def wghtd_Z(scale_s,n_s,scale_b,n_b,sig=None):
 def wghtd_eZ(scale_s,n_s,scale_b,n_b,sig=None):
     return eZ(scale_s*n_s,scale_s*sqrt(n_s),scale_b*n_b,scale_b*sqrt(n_b),sig)
 
-def asimov_scorer_function(y_true,y_pred,sig = 0.001):
-	# global expectedSignal,expectedBkgd
+def asimov_scorer_function(estimator,X,y_true,expectedBkgd = None,expectedSignal = None,sig = 0.2):
+	
 	# _all = y_true[y_pred == 1]
 	# signal, back = len(_all[_all == 1]), len(_all[_all == 0])
-	lumi=30. #luminosity in /fb
-	expectedBkgd=844000.*8.2e-4*lumi #cross section of ttbar sample in fb times efficiency measured by Marco
-	expectedSignal=228.195*0.14*lumi 
-
-	signalWeight=expectedSignal/sum(y_true)# /len(y_true[y_true ==])
+	#lumi=30. #luminosity in /fb
+	#expectedBkgd=844000.*8.2e-4*lumi #cross section of ttbar sample in fb times efficiency measured by Marco
+	#expectedSignal=228.195*0.14*lumi 
+	y_pred = estimator.predict(X)
+	
+	signalWeight=expectedSignal/sum(y_true)
 	bkgdWeight=expectedBkgd/sum(1-y_true)
 
 	s = signalWeight*sum(y_pred*y_true)
 	b = bkgdWeight*sum(y_pred*(1-y_true))
-	print "signal = ",s,"bkgd = ",b
+	# print "signal = ",s,"bkgd = ",b
 	return 1./Z(s, b, sig=sig)
 
-def asimov_eval_matrics(y_pred, dataMATRIX):
-  	y_true = dataMATRIX.get_label()
-	return 'asimov_loss',float(asimov_scorer_function(y_true,y_pred,sig = 0.001))
+def asimov_metric(y_pred, y ,expectedBkgd = None,expectedSignal = None,sig = 0.2):
 
-# example usage
-# Z(14,5,0.3)                   : 3.6149635359712184
-# eZ(14,sqrt(14),5,sqrt(5),0.3) : 1.053697793635855
-# wghtd_Z(2,7,10,0.5,0.3)       : 3.6149635359712184
-# wghtd_eZ(2,7,10,0.5,0.3)      : 2.605193580282292
+	y_true = y.get_label()
 
+	signalWeight=expectedSignal/sum(y_true)
+	bkgdWeight=expectedBkgd/sum(1-y_true)
+
+	s = signalWeight*sum(around(y_pred)*y_true) # np.around() has to be changed because 0.5 is not best for asimov
+	b = bkgdWeight*sum(around(y_pred)*(1-y_true))
+	# print "signal = ",s,"bkgd = ",b
+	return "asimov_loss",1./Z(s, b, sig=sig)
