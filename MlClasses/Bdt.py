@@ -325,14 +325,14 @@ class Bdt(object):
             maxIndex=np.argmax(toPlot)
             plt.title('Systematic '+str(systematic)+', s: '+str(round(s[maxIndex],1))+', b:'+str(round(b[maxIndex],1))+', best significance is '+str(round(toPlot[maxIndex],2))+' +/- '+str(round(error[maxIndex],2)))
             
-	        plt.xlabel('Cut on classifier score')
+            plt.xlabel('Cut on classifier score')
             plt.ylabel('Asimov estimate of significance')
             plt.savefig(os.path.join(self.output,'asimovDiscriminatorSyst'+str(systematic).replace('.','p')+'.pdf'))
             plt.clf()
-	
-	        print "Best Asimov: ", str(round(toPlot[maxIndex],2))+' +/- '+str(round(error[maxIndex],2))
-	        print "Probability: ", ((h1[1][:-1]+h1[1][1:])/2)[maxIndex]    
-	
+
+            print "Best Asimov: ", str(round(toPlot[maxIndex],2))+' +/- '+str(round(error[maxIndex],2))
+            print "Probability: ", ((h1[1][:-1]+h1[1][1:])/2)[maxIndex]    
+
             if makeHistograms: #Do this on the full set
 
 
