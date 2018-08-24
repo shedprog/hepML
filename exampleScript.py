@@ -110,7 +110,7 @@ if makePlots:
     df['weight'] = df['signal']*signalWeight+(1-df['signal'])*bkgdWeight
 
     #Choose some variables to plot and loop over them
-    varsToPlot = ['HT','MT','MET','sel_lep_pt0','selJet_pt0']
+    varsToPlot = ['HT']
 
     for v in varsToPlot:
 
@@ -122,7 +122,7 @@ if makePlots:
                 bins=50, range=[0.,maxRange], 
                 stacked=True, color = ['g','r'],
                 weights=[df[df.signal==0]['weight'],df[df.signal==1]['weight']]) #supply the weights
-        plt.yscale('log')
+        # plt.yscale('log')
         plt.xlabel(v)
         plt.legend()
         plt.savefig(os.path.join(output,'hist_'+v+'.pdf')) #save the histogram
@@ -259,8 +259,9 @@ if doXGBClassification:
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~Default objective function~~~~~~~~~~~~~~~~~~~~~~~~~~~
     bdt.setup(cls=XGBClassifier,objective='binary:logistic',expected_events=[expectedSignal,expectedBkgd],
-              sigma=sigma,separation_facet=0.98,
-              subsample=0.8,max_depth=17,gamma=0.0,min_child_weight=2,colsample_bylevel=0.6) 
+              sigma=sigma,separation_facet=0.5,
+              subsample=0.97,max_depth=18,gamma=0.0,min_child_weight=4,colsample_bylevel=0.7,
+              reg_alpha=1,learning_rate=0.1,eta=0.12) 
 
     bdt.setup_metrics(expectedSignal,expectedBkgd,sigma)
 
@@ -285,6 +286,9 @@ if doXGBClassification:
 
     print 'Making HEP plots'
     bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.1,0.3,0.5],makeHistograms=False)
+
+    print 'Making Hist plots'
+    bdt.makeHistPlot(expectedSignal,expectedBkgd)
 
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time
@@ -361,12 +365,12 @@ if doHyperOpt:
         'max_depth':hp.choice('max_depth',range(1,20)),
         'min_child_weight':hp.choice('min_child_weight',range(1,20)),
         'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
-        'subsample' : hp.choice('subsample',[i/100.0 for i in range(60,100,5)]),
-        'colsample_bytree' : hp.choice('colsample_bytree',[i/100.0 for i in range(60,100,5)]),
-        # 'reg_alpha': hp.choice('reg_alpha',[1e-2, 0.1, 1, 100]), 
-        # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+        'subsample' : hp.choice('subsample',[i/10.0 for i in range(1,10,1)]),
+        'colsample_bytree' : hp.choice('colsample_bytree',[i/10.0 for i in range(1,10,1)]),
+        'reg_alpha': hp.choice('reg_alpha',[1e-2, 0.1, 1, 100]), 
+        'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
         # 'n_estimators': hp.choice('n_estimators',range(80,800)),
-        # 'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
+        'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
 
     }
     param_names = list(space4rf.keys())
@@ -376,7 +380,7 @@ if doHyperOpt:
     
     #bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
     bdt.setup(cls=XGBClassifier,objective=asimov_obj,expected_events=[expectedSignal,expectedBkgd],
-              sigma=0.1,separation_facet=0.99)
+              sigma=0.1,separation_facet=0.98)
 
     bdt.setup_metrics(expectedSignal,expectedBkgd,0.1)
 

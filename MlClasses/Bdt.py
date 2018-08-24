@@ -92,7 +92,7 @@ class Bdt(object):
                            expectedBkgd = expectedBkgd,
                            expectedSignal = expectedSignal,
                            sig = sigma)
-	
+    
         #update_wrapper(metrics_,partial)
 
         #self.scorer = metrics.make_scorer(metrics_, 
@@ -101,8 +101,8 @@ class Bdt(object):
 
 
     def fit(self):
-        # self.history = self.bdt.fit(self.data.X_eval, self.data.y_eval)
-        # eval_set = [(self.data.X_test, self.data.y_test)] 
+        # self.history = self.bdt.fit(self.data.X_train, self.data.y_train)
+
         self.history = self.bdt.fit(self.data.X_train,self.data.y_train,
                                     eval_set=[(self.data.X_test,self.data.y_test)],
                                     early_stopping_rounds=10,
@@ -192,11 +192,11 @@ class Bdt(object):
         if not os.path.exists(self.output): os.makedirs(self.output)
         f=open(os.path.join(self.output,'classificationReport'+append+'.txt'),'w')
         f.write( 'Performance on test set:')
-        classificationReport(self.bdt.predict(X_test),self.predict_proba(X_test),y_test,f)
+        classificationReport(self.bdt.predict_class(X_test),self.predict_proba(X_test),y_test,f)
 
         f.write( '\n' )
         f.write('Performance on training set:')
-        classificationReport(self.bdt.predict(X_train),self.predict_proba(X_train),y_train,f)
+        classificationReport(self.bdt.predict_class(X_train),self.predict_proba(X_train),y_train,f)
 
         if self.crossValResults is not None:
             f.write( '\n\nCross Validation\n')
@@ -233,12 +233,80 @@ class Bdt(object):
         plotDiscriminator(self.bdt,self.data.X_test,self.data.y_test, self.output)
 
     def testPrediction(self):
-        return self.bdt.predict(self.data.X_test)
+        return self.bdt.predict_class(self.data.X_test)
 
     def getAccuracy(self):
         if not self.score:
             self.score = self.bdt.score(self.data.X_test,self.data.y_test)
         return self.score
+
+    def makeHistPlot(self,expectedSignal,expectedBkgd):
+        #===== Make a couple of plots: =====
+
+
+        signal_ = self.data.y_test
+        dataSet_ = self.data.X_test
+        
+        print "initial set: ", len(signal_)
+
+        #Calculate the weights for each event and add them to the dataframe
+        signalWeight = expectedSignal/(signal_==1).sum() 
+        bkgdWeight   = expectedBkgd/(signal_==0).sum()
+
+        weight_ = signal_ *signalWeight+(1-signal_)*bkgdWeight
+
+
+        predict = self.bdt.predict_class(dataSet_)
+        print predict
+
+        signal = signal_[predict == 1]
+        dataSet = dataSet_[predict == 1]
+
+        print "Final set: ", len(signal)
+
+        #Add a weights column with the correct weights for background and signal
+        weight = signal *signalWeight+(1-signal)*bkgdWeight
+
+        #Choose some variables to plot and loop over them
+        varsToPlot = ['HT']
+
+        # Before Classification:
+        for v in varsToPlot:
+
+            print 'Plotting',v
+            maxRange=max(dataSet_[v])
+            minRange=min(dataSet_[v])
+            #Plot the signal and background but stacked on top of each other
+            plt.hist([dataSet_[signal_==1][v],dataSet_[signal_==0][v]], #Signal and background input
+                    label=['signal','background'],
+                    bins=50, range=[minRange,maxRange], 
+                    stacked=True, color = ['r','g'],
+                    weights=[weight_[signal_==1],weight_[signal_==0]]) #supply the weights
+            # plt.yscale('log')
+            plt.xlabel(v)
+            plt.plot([], [], ' ', label="Events: %d" % len(signal_))
+            plt.legend()
+            plt.savefig(os.path.join(self.output,'hist_'+v+'_before.pdf')) #save the histogram
+            plt.clf()
+
+        # After Classification:
+        for v in varsToPlot:
+
+            print 'Plotting',v
+            maxRange=max(dataSet[v])
+            minRange=min(dataSet[v])
+            #Plot the signal and background but stacked on top of each other
+            plt.hist([dataSet[signal==1][v],dataSet[signal==0][v]], #Signal and background input
+                    label=['signal','background'],
+                    bins=50, range=[minRange,maxRange], 
+                    stacked=True, color = ['r','g'],
+                    weights=[weight[signal==1],weight[signal==0]]) #supply the weights
+            # plt.yscale('log')
+            plt.xlabel(v)
+            plt.plot([], [], ' ', label="Events: %d" % len(signal))
+            plt.legend()
+            plt.savefig(os.path.join(self.output,'hist_'+v+'_after.pdf')) #save the histogram
+            plt.clf() #Clear it for the next one
 
     def makeHepPlots(self,expectedSignal,expectedBackground,systematics=[0.0001],makeHistograms=True,subDir=None,customPrediction=None):
         '''Plots intended for binary signal/background classification
@@ -345,7 +413,7 @@ class Bdt(object):
                 else:
                     data = self.data.X
 
-                predictions= self.bdt.predict(data.as_matrix())
+                predictions= self.bdt.predict_class(data.as_matrix())
             
                 #Now unstandardise
                 if self.data.standardised:
@@ -370,8 +438,9 @@ class Bdt(object):
                 p1.plotAllStackedHists1D('truth',weights='weight',log=True)
                 p2.plotAllStackedHists1D('truth',weights='weight',log=True)
 
+
         if subDir:
-            self.output=oldOutput
-         
+            self.output=oldOutput 
+
 
         pass

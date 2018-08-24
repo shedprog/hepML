@@ -24,30 +24,30 @@ def wghtd_eZ(scale_s,n_s,scale_b,n_b,sig=None):
     return eZ(scale_s*n_s,scale_s*sqrt(n_s),scale_b*n_b,scale_b*sqrt(n_b),sig)
 
 def asimov_scorer_function(estimator,X,y_true,expectedBkgd = None,expectedSignal = None,sig = 0.2):
-	
-	# _all = y_true[y_pred == 1]
-	# signal, back = len(_all[_all == 1]), len(_all[_all == 0])
-	#lumi=30. #luminosity in /fb
-	#expectedBkgd=844000.*8.2e-4*lumi #cross section of ttbar sample in fb times efficiency measured by Marco
-	#expectedSignal=228.195*0.14*lumi 
-	y_pred = estimator.predict(X)
-	
-	signalWeight=expectedSignal/sum(y_true)
-	bkgdWeight=expectedBkgd/sum(1-y_true)
+    
+    # _all = y_true[y_pred == 1]
+    # signal, back = len(_all[_all == 1]), len(_all[_all == 0])
+    #lumi=30. #luminosity in /fb
+    #expectedBkgd=844000.*8.2e-4*lumi #cross section of ttbar sample in fb times efficiency measured by Marco
+    #expectedSignal=228.195*0.14*lumi 
+    y_pred = estimator.predict(X)
+    
+    signalWeight=expectedSignal/sum(y_true)
+    bkgdWeight=expectedBkgd/sum(1-y_true)
 
-	s = signalWeight*sum(y_pred*y_true)
-	b = bkgdWeight*sum(y_pred*(1-y_true))
-	# print "signal = ",s,"bkgd = ",b
-	return 1./Z(s, b, sig=sig)
+    s = signalWeight*sum(y_pred*y_true)
+    b = bkgdWeight*sum(y_pred*(1-y_true))
+    # print "signal = ",s,"bkgd = ",b
+    return 1./Z(s, b, sig=sig)
 
 def asimov_metric(y_pred, y ,expectedBkgd = None,expectedSignal = None,sig = 0.2):
 
-	y_true = y.get_label()
+    y_true = y.get_label()
 
-	signalWeight=expectedSignal/sum(y_true)
-	bkgdWeight=expectedBkgd/sum(1-y_true)
+    signalWeight=expectedSignal/sum(y_true)
+    bkgdWeight=expectedBkgd/sum(1-y_true)
 
-	s = signalWeight*sum(around(y_pred)*y_true) # np.around() has to be changed because 0.5 is not best for asimov
-	b = bkgdWeight*sum(around(y_pred)*(1-y_true))
-	# print "signal = ",s,"bkgd = ",b
-	return "asimov_loss",1./Z(s, b, sig=sig)
+    s = signalWeight*sum(around(y_pred)*y_true) # np.around() has to be changed because 0.5 is not best for asimov
+    b = bkgdWeight*sum(around(y_pred)*(1-y_true))
+    # print "signal = ",s,"bkgd = ",b
+    return "asimov_loss",1./Z(s, b, sig=sig)
