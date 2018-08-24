@@ -2,10 +2,25 @@ import xgboost
 import numpy as np
 
 class XGBClassifier(xgboost.XGBClassifier):
-	
 
-	separation_facet = 0.96 # default value
-	# the value of separator should be changed: XGBClassifier.separation_facet = 0.7
+    def __init__(self, separation_facet = 0.5,max_depth=3, learning_rate=0.1,
+                 n_estimators=100, silent=True,
+                 objective="binary:logistic", booster='gbtree',
+                 n_jobs=1, nthread=None, gamma=0, min_child_weight=1,
+                 max_delta_step=0, subsample=1, colsample_bytree=1, colsample_bylevel=1,
+                 reg_alpha=0, reg_lambda=1, scale_pos_weight=1,
+                 base_score=0.5, random_state=0, seed=None, missing=None, **kwargs):
+
+
+        super(XGBClassifier, self).__init__(max_depth, learning_rate,
+                                            n_estimators, silent, objective, booster,
+                                            n_jobs, nthread, gamma, min_child_weight,
+                                            max_delta_step, subsample,
+                                            colsample_bytree, colsample_bylevel,
+                                            reg_alpha, reg_lambda,
+                                            scale_pos_weight, base_score,
+                                            random_state, seed, missing, **kwargs)
+        self.separation_facet = separation_facet # Add internal variable for classifier facet
 
 	def predict(self, data, output_margin=False, ntree_limit=0):
 		"""

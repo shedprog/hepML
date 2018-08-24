@@ -52,24 +52,26 @@ class Bdt(object):
         expectedSignal,expectedBack = expected_events[0],expected_events[1]
 
         if objective == None:
-
+            print "None objective is choosen!"
             self.cls = cls
             self.bdt = self.cls(**bdtArgs)
 
+        elif isinstance(objective, basestring):
+            print "Default objective is choosen!"
+            self.cls = cls
+            self.bdt = self.cls(objective=objective,**bdtArgs)
 
-        if objective != None:
-
+        elif objective != None:
+            print "Custome objective is choosen!"
             obj_fun = partial(objective,
-			      expectedSignal = expectedSignal,
-			      expectedBkgd = expectedBack,
-			      sigma=sigma)
-
-	    
-	    self.init_param = dict(objective=obj_fun,**bdtArgs) 
+                            expectedSignal = expectedSignal,
+                            expectedBkgd = expectedBack,
+                            sigma=sigma)
+            self.init_param = dict(objective=obj_fun,**bdtArgs) 
             self.cls = cls 
             self.bdt = self.cls(**self.init_param) 
 
-
+        print "FACET:",self.bdt.separation_facet
         # self.config.addToConfig('Class used: ',self.bdt)
         self.config.addToConfig('Vars used: ',self.data.X.columns.values)
         self.config.addToConfig('BDT was activated: ',type(self.bdt).__name__)
@@ -103,7 +105,7 @@ class Bdt(object):
         # eval_set = [(self.data.X_test, self.data.y_test)] 
         self.history = self.bdt.fit(self.data.X_train,self.data.y_train,
                                     eval_set=[(self.data.X_test,self.data.y_test)],
-                                    early_stopping_rounds=20,
+                                    early_stopping_rounds=10,
                                     eval_metric=self.metrics,verbose=True)
 
     def predict_proba(self,X_test):
@@ -128,7 +130,7 @@ class Bdt(object):
         score = CV_gen.mean()
 
         if self.bestHyperOpr_score == None:
-            self.bestHyperOpr_score = score
+            self.bestHyperOpr_score = abs(score)
             self.bestHyperOpt_param = param
         
         if abs(score) < self.bestHyperOpr_score:

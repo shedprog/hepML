@@ -53,6 +53,8 @@ print "doBdtClassification ==>", doBdtClassification
 print "doXGBClassification ==>", doXGBClassification
 print "doHyperOpt          ==>", doHyperOpt
 
+sigma = 0.1
+
 output='exampleOut' # an output directory (then make it if it doesn't exist)
 if not os.path.exists(output): os.makedirs(output)
 
@@ -248,11 +250,19 @@ if doXGBClassification:
     print 'Defining XGB'
     bdt = Bdt(mlDataC,output+'/XGB')
 
-    bdt.setup_metrics(expectedSignal,expectedBkgd,0.1)
 
     print 'Setup XGB'
-    bdt.setup(cls=XGBClassifier,objective=asimov_obj,expected_events=[expectedSignal,expectedBkgd],
-	      sigma=0.3,separation_facet=0.5,n_estimators=1000,subsample=0.8,max_depth=17,gamma=0,min_child_weight=2,colsample_bylevel=0.6)
+    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~Asimov objective function~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    # bdt.setup(cls=XGBClassifier,objective=asimov_obj,expected_events=[expectedSignal,expectedBkgd],
+    #           sigma=0.3,separation_facet=0.98,
+    #           n_estimators=1000,subsample=0.8,max_depth=17,gamma=0,min_child_weight=2,colsample_bylevel=0.6)
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~Default objective function~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    bdt.setup(cls=XGBClassifier,objective='binary:logistic',expected_events=[expectedSignal,expectedBkgd],
+              sigma=sigma,separation_facet=0.98,
+              subsample=0.8,max_depth=17,gamma=0.0,min_child_weight=2,colsample_bylevel=0.6) 
+
+    bdt.setup_metrics(expectedSignal,expectedBkgd,sigma)
 
     # ========================XGBClassifier args===============================
     # max_depth=3, learning_rate=0.1, n_estimators=100, silent=True, 
@@ -274,7 +284,7 @@ if doXGBClassification:
     bdt.diagnostics()
 
     print 'Making HEP plots'
-    bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.1,0.3,0.4],makeHistograms=False)
+    bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.1,0.3,0.5],makeHistograms=False)
 
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time
