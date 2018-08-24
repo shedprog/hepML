@@ -367,10 +367,10 @@ if doHyperOpt:
         'gamma': hp.choice('gamma',[x * 0.1 for x in range(0, 8)]),
         'subsample' : hp.choice('subsample',[i/10.0 for i in range(1,10,1)]),
         'colsample_bytree' : hp.choice('colsample_bytree',[i/10.0 for i in range(1,10,1)]),
-        'reg_alpha': hp.choice('reg_alpha',[1e-2, 0.1, 1, 100]), 
-        'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
-        # 'n_estimators': hp.choice('n_estimators',range(80,800)),
-        'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
+        # 'reg_alpha': hp.choice('reg_alpha',[1e-2, 0.1, 1, 100]), 
+        # 'eta': hp.choice('eta',[x * 0.01 for x in range(1, 20)]),
+        # # 'n_estimators': hp.choice('n_estimators',range(80,800)),
+        # 'learning_rate': hp.choice('learning_rate',[0.001,0.01,0.1,0.5,1]),
 
     }
     param_names = list(space4rf.keys())
@@ -380,9 +380,9 @@ if doHyperOpt:
     
     #bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
     bdt.setup(cls=XGBClassifier,objective=asimov_obj,expected_events=[expectedSignal,expectedBkgd],
-              sigma=0.1,separation_facet=0.98)
+              sigma=sigma,separation_facet=0.98)
 
-    bdt.setup_metrics(expectedSignal,expectedBkgd,0.1)
+    bdt.setup_metrics(expectedSignal,expectedBkgd,sigma)
 
     # f = bdt.hyperopt_train_test(XGBClassifier())
     best = fmin(bdt.hyperopt_train_test, space4rf, algo=tpe.suggest, max_evals=500, trials=trials)

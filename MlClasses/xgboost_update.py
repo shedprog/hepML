@@ -10,7 +10,7 @@ class XGBClassifier(xgboost.XGBClassifier):
                  max_delta_step=0, subsample=1, colsample_bytree=1, colsample_bylevel=1,
                  reg_alpha=0, reg_lambda=1, scale_pos_weight=1,
                  base_score=0.5, random_state=0, seed=None, missing=None, **kwargs):
-        print 'XGBClassifier __init__'
+        # print 'XGBClassifier __init__'
         self.max_depth = max_depth
         self.learning_rate = learning_rate
         self.n_estimators = n_estimators
@@ -58,7 +58,7 @@ class XGBClassifier(xgboost.XGBClassifier):
 
         # Same changes were added to seperate signal with probabulity > self.separation_facet
         # print '____updated xgboost method______'
-        print 'predict_class was used!'
+        # print 'predict_class was used!'
         test_dmatrix = xgboost.DMatrix(data, missing=self.missing, nthread=self.n_jobs)
         class_probs = self.get_booster().predict(test_dmatrix,
                                                  output_margin=output_margin,
