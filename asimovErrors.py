@@ -1,6 +1,7 @@
-from numpy import log,power,sqrt,around
+from numpy import log,power,sqrt,zeros
 from keras import backend as K
 eps=0.000001
+inf_asimov=0.001 # To avoid infinity
 
 # s,b cnts observed in experimentm 
 # sig relative error on b
@@ -38,21 +39,31 @@ def asimov_scorer_function(estimator,X,y_true,expectedBkgd = None,expectedSignal
 
     s = signalWeight*sum(y_pred*y_true)
     b = bkgdWeight*sum(y_pred*(1-y_true))
-    # print "signal = ",s,"bkgd = ",b
+    b = (b if b>1.0 else 1.0)
+    print "asimov scorer function"
+    print "signal = ",s,"bkgd = ",b
     return 1./Z(s, b, sig=sig)
 
 #Early stop
 def asimov_metric(y_pred, y ,expectedBkgd = None,expectedSignal = None,sig = 0.2,facet=0.5):
 
-    def round_(array):
-        return 0 if array < facet else 1
+    #def round_(array):
+    #    facets = full(len(array),facet)
+    #    return 1 if greater(array,facet) else 0
 
     y_true = y.get_label()
 
     signalWeight=expectedSignal/sum(y_true)
     bkgdWeight=expectedBkgd/sum(1-y_true)
+    
+    y_hat = zeros(len(y_pred))
+    y_hat[y_pred>facet]=1    
 
-    s = signalWeight*sum(round_(y_pred)*y_true) # np.around() has to be changed because 0.5 is not best for asimov
-    b = bkgdWeight*sum(round_(y_pred)*(1-y_true))
-    # print "signal = ",s,"bkgd = ",b
+    #print y_hat
+
+    s = signalWeight*sum(y_hat*y_true) # np.around() has to be changed because 0.5 is not best for asimov
+    b = bkgdWeight*sum(y_hat*(1-y_true))
+    #b = (b if b!=0 else 0.1)
+    print 'asimov metric: '
+    print "signal = ",s,"bkgd = ",b
     return "asimov_loss",1./Z(s, b, sig=sig)

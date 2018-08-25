@@ -55,11 +55,13 @@ class Bdt(object):
             print "None objective is choosen!"
             self.cls = cls
             self.bdt = self.cls(**bdtArgs)
+            self.init_param = dict(objective=objective,**bdtArgs) 
 
         elif isinstance(objective, basestring):
             print "Default objective is choosen!"
             self.cls = cls
             self.bdt = self.cls(objective=objective,**bdtArgs)
+            self.init_param = dict(objective=objective,**bdtArgs) 
 
         elif objective != None:
             print "Custome objective is choosen!"
@@ -247,7 +249,7 @@ class Bdt(object):
         signal_ = self.data.y_test
         dataSet_ = self.data.X_test
         
-        print "initial set: ", len(signal_)
+        print "Initial set: ", len(signal_)
 
         #Calculate the weights for each event and add them to the dataframe
         signalWeight = expectedSignal/(signal_==1).sum() 
@@ -257,7 +259,7 @@ class Bdt(object):
 
 
         predict = self.bdt.predict_class(dataSet_)
-        print predict
+        #print predict
 
         signal = signal_[predict == 1]
         dataSet = dataSet_[predict == 1]
