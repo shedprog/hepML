@@ -213,7 +213,7 @@ if doBdtClassification:
     # class_weight=None, presort=False
     # ====================AdaBoostClassifier Args=============================
     # base_estimator=None, n_estimators=50, learning_rate=1.0, 
-    # algorithm=SAMME.R, random_state=None  
+    # algorithm=SAMME.R, random_state=None
 
     print 'Fitting BDT'
     bdt.fit()
@@ -260,8 +260,7 @@ if doXGBClassification:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~Default objective function~~~~~~~~~~~~~~~~~~~~~~~~~~~
     bdt.setup(cls=XGBClassifier,objective='binary:logistic',expected_events=[expectedSignal,expectedBkgd],
               sigma=sigma,separation_facet=0.5,
-              subsample=0.97,max_depth=18,gamma=0.0,min_child_weight=4,colsample_bylevel=0.7,
-              reg_alpha=1,learning_rate=0.1,eta=0.12) 
+              subsample=0.9,max_depth=8,gamma=0.1,min_child_weight=15,colsample_bylevel=0.9)
 
     bdt.setup_metrics(expectedSignal,expectedBkgd,sigma)
 
@@ -287,8 +286,8 @@ if doXGBClassification:
     print 'Making HEP plots'
     bdt.makeHepPlots(expectedSignal,expectedBkgd,systematics=[0.1,0.3,0.5],makeHistograms=False)
 
-    print 'Making Hist plots'
-    bdt.makeHistPlot(expectedSignal,expectedBkgd)
+    #print 'Making Hist plots'
+    #bdt.makeHistPlot(expectedSignal,expectedBkgd)
 
     print '----Timer stop----'
     print 'General CPU time: ', time.time()-start_time
@@ -379,8 +378,9 @@ if doHyperOpt:
     trials = Trials()
     
     #bdt.setup(cls=XGBClassifier,objective= 'binary:logistic', nthread=6, seed=27)
-    bdt.setup(cls=XGBClassifier,objective=asimov_obj,expected_events=[expectedSignal,expectedBkgd],
-              sigma=sigma,separation_facet=0.98)
+    bdt.setup(cls=XGBClassifier,objective=asimov_obj,nthread=6, seed = 27,
+              expected_events=[expectedSignal,expectedBkgd],
+              sigma=sigma,separation_facet=0.95)
 
     bdt.setup_metrics(expectedSignal,expectedBkgd,sigma)
 

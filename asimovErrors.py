@@ -1,4 +1,4 @@
-from numpy import log,power,sqrt,zeros
+from numpy import log,power,sqrt,zeros,exp,around
 from keras import backend as K
 eps=0.000001
 inf_asimov=0.001 # To avoid infinity
@@ -56,10 +56,14 @@ def asimov_metric(y_pred, y ,expectedBkgd = None,expectedSignal = None,sig = 0.2
     signalWeight=expectedSignal/sum(y_true)
     bkgdWeight=expectedBkgd/sum(1-y_true)
     
-    y_hat = zeros(len(y_pred))
-    y_hat[y_pred>facet]=1    
-
+    # y_hat = zeros(len(y_pred))
+    # y_hat[y_pred>facet]=1
+    # y_hat = 1.0 / (1.0 + exp(-(y_pred-facet)*100))    
     #print y_hat
+
+    # y_hat = 1.0 / (1.0 + exp(-(y_pred-facet)*100)) 
+    #y_hat = around(y_pred)
+    y_hat = y_pred
 
     s = signalWeight*sum(y_hat*y_true) # np.around() has to be changed because 0.5 is not best for asimov
     b = bkgdWeight*sum(y_hat*(1-y_true))
